@@ -63,13 +63,20 @@ through the migration.
 
 ## Phase 2 — Migrate to PouchDB (local, no sync)
 
-- [ ] Swap Dexie → PouchDB (IndexedDB adapter), behaviour identical.
-- [ ] Non-destructive one-time migration Dexie→Pouch (UUIDs, attachments);
-      keep old Dexie db as fallback until confirmed.
-- [ ] `backup.js` → v3, keep v1/v2 importable.
-- [ ] Tests for migration and v3 round-trip.
+- [x] Swap Dexie → PouchDB (idb adapter in the browser), behaviour identical.
+- [x] Doc model (deferred from Phase 1): typed by `_id` prefix
+      (`tree:`/`event:`/`photo:`), UUID ids, photos as base64 attachments.
+- [x] Non-destructive one-time migration Dexie→Pouch (`data/migrate.js`); old
+      Dexie db left intact as a fallback; a `_local` flag makes it run once.
+- [x] `backup.js` → v3 (docs + attachments); v1/v2 backups still import.
+- [x] Custom build: `pouchdb-core` + only the idb adapter (+ `events` polyfill),
+      not the monolithic `pouchdb`. Bundle ~87 kB gzip.
+- [x] Tests for repository, migration, backup round-trip + legacy import, model.
+- [x] Adapter alias: idb for prod, in-memory for tests (`@adapter`).
 
-**Exit:** app runs on PouchDB. This build is the Phase 0.5 demo, upgraded.
+**Exit:** app runs on PouchDB. Verified in a real browser (seed, list,
+attention, spec-vs-observed detail; no console errors). This build is the
+Phase 0.5 demo, upgraded.
 
 ## Phase 3 — Sync backend (CouchDB on the Pi)
 
