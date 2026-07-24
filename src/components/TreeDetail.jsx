@@ -46,6 +46,8 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   );
 
   const [draft, setDraft] = useState({ type: "note", notes: "", date: today() });
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
 
   if (!tree) return <p className="empty">{t("common.loading")}</p>;
 
@@ -56,6 +58,26 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   async function logEvent() {
     await events.add({ treeId: id, ...draft });
     setDraft({ type: "note", notes: "", date: today() });
+  }
+
+  function startEdit(ev) {
+    setEditingId(ev.id);
+    setEditDraft({ type: ev.type, date: ev.date, notes: ev.notes ?? "" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft(null);
+  }
+
+  async function saveEdit() {
+    const original = eventList.find((e) => e.id === editingId);
+    await events.update({ ...original, ...editDraft });
+    cancelEdit();
+  }
+
+  async function deleteEvent(ev) {
+    if (confirm(t("treeDetail.eventDeleteConfirm"))) await events.remove(ev.id);
   }
 
   async function onPickPhoto(e) {
@@ -263,13 +285,52 @@ export default function TreeDetail({ id, onBack, onEdit }) {
         </div>
 
         <ul className="timeline">
-          {(eventList || []).map((e) => (
-            <li key={e.id}>
-              <span className="ev-date">{e.date}</span>
-              <span className={`ev-type t-${e.type}`}>{t(`eventType.${e.type}`)}</span>
-              <span className="ev-notes">{e.notes}</span>
-            </li>
-          ))}
+          {(eventList || []).map((e) =>
+            editingId === e.id ? (
+              <li key={e.id} className="ev-editing">
+                <select
+                  value={editDraft.type}
+                  onChange={(ev) => setEditDraft({ ...editDraft, type: ev.target.value })}
+                >
+                  {EVENT_TYPES.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`eventType.${v}`)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={editDraft.date}
+                  onChange={(ev) => setEditDraft({ ...editDraft, date: ev.target.value })}
+                />
+                <input
+                  value={editDraft.notes}
+                  placeholder={t("treeDetail.notesPlaceholder")}
+                  onChange={(ev) => setEditDraft({ ...editDraft, notes: ev.target.value })}
+                />
+                <button className="primary sm" onClick={saveEdit}>
+                  {t("common.save")}
+                </button>
+                <button className="ghost sm" onClick={cancelEdit}>
+                  {t("common.cancel")}
+                </button>
+              </li>
+            ) : (
+              <li key={e.id}>
+                <span className="ev-date">{e.date}</span>
+                <span className={`ev-type t-${e.type}`}>{t(`eventType.${e.type}`)}</span>
+                <span className="ev-notes">{e.notes}</span>
+                <span className="ev-actions">
+                  <button className="link sm" onClick={() => startEdit(e)}>
+                    {t("common.edit")}
+                  </button>
+                  <button className="link danger sm" onClick={() => deleteEvent(e)}>
+                    {t("common.delete")}
+                  </button>
+                </span>
+              </li>
+            )
+          )}
         </ul>
       </div>
     </section>

@@ -104,6 +104,7 @@ const dict = {
     "treeDetail.clinicalHistory": "Historia clínica",
     "treeDetail.notesPlaceholder": "Notas",
     "treeDetail.log": "Registrar",
+    "treeDetail.eventDeleteConfirm": "¿Borrar este registro?",
 
     // --- Tree form ---
     "treeForm.cancel": "← Cancelar",
@@ -325,6 +326,7 @@ const dict = {
     "treeDetail.clinicalHistory": "Clinical history",
     "treeDetail.notesPlaceholder": "Notes",
     "treeDetail.log": "Log",
+    "treeDetail.eventDeleteConfirm": "Delete this entry?",
 
     // --- Tree form ---
     "treeForm.cancel": "← Cancel",

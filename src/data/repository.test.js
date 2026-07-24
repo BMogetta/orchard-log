@@ -86,6 +86,28 @@ describe("events repo", () => {
     const repots = await events.forTreeOfType(treeId, "repot");
     expect(repots.map((e) => e.date)).toEqual(["2024-02-01", "2024-05-01"]);
   });
+
+  it("update edits an existing event in place", async () => {
+    const treeId = await trees.save(blankTree());
+    await events.add({ treeId, type: "note", notes: "typo", date: "2024-01-01" });
+    const [ev] = await events.forTree(treeId);
+    await events.update({ ...ev, notes: "fixed", type: "prune" });
+    const [after] = await events.forTree(treeId);
+    expect(after.id).toBe(ev.id);
+    expect(after.notes).toBe("fixed");
+    expect(after.type).toBe("prune");
+  });
+
+  it("remove deletes a single event, leaving the rest", async () => {
+    const treeId = await trees.save(blankTree());
+    await events.add({ treeId, notes: "keep", date: "2024-01-01" });
+    await events.add({ treeId, notes: "drop", date: "2024-02-01" });
+    const drop = (await events.forTree(treeId)).find((e) => e.notes === "drop");
+    await events.remove(drop.id);
+    const left = await events.forTree(treeId);
+    expect(left).toHaveLength(1);
+    expect(left[0].notes).toBe("keep");
+  });
 });
 
 describe("photos repo", () => {

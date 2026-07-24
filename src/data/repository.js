@@ -86,6 +86,18 @@ export const events = {
     });
     return _id;
   },
+
+  // Update an existing event (object carries id + _rev from a prior read).
+  update: async (event) => {
+    const { id, _rev, ...rest } = event;
+    await pouch.put({ _id: id, _rev, ...rest });
+    return id;
+  },
+
+  remove: async (id) => {
+    const doc = await pouch.get(id);
+    await pouch.remove(doc);
+  },
 };
 
 export const photos = {
