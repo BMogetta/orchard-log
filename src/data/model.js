@@ -1,43 +1,10 @@
-import Dexie from "dexie";
-
-// ---------------------------------------------------------------------------
-// Local-first database. Everything lives in IndexedDB on this device.
-// Three tables:
-//   trees  - one record per tree (identity + spec + observed reality)
-//   events - the clinical-history timeline (one row per logged event)
-//   photos - image blobs, linked to a tree and optionally to an event
-//
-// The core idea of this app: a tree has a SPEC (what references say) and an
-// OBSERVED reality (what YOUR plant actually does in YOUR spot). Both are
-// stored side by side so the observed notes can override the book.
-// ---------------------------------------------------------------------------
-
-export const db = new Dexie("orchard-log");
-
-db.version(1).stores({
-  // Only indexed fields are listed here; records may hold many more fields.
-  trees: "++id, label, commonName, pollinationPartnerId, updatedAt",
-  events: "++id, treeId, date, type",
-  photos: "++id, treeId, eventId, createdAt",
-});
-
-// v2: index schema is unchanged, but the upgrade callback normalises legacy
-// free-text spec fields into the closed enums introduced below, and backfills
-// new fields on existing records so the form doesn't have to guard for gaps.
-db.version(2)
-  .stores({
-    trees: "++id, label, commonName, pollinationPartnerId, updatedAt",
-    events: "++id, treeId, date, type",
-    photos: "++id, treeId, eventId, createdAt",
-  })
-  .upgrade(async (tx) => {
-    await tx.table("trees").toCollection().modify(migrateTreeToV2);
-  });
+// Storage-agnostic domain model: enums, the blank-tree factory, derived values,
+// and the v1->v2 normalisation. No database code here — the backend (PouchDB)
+// and the repository consume these.
 
 // --- Enum values (single source of truth for form + detail views) --------
-// Only the stored `value` slugs live here. Human labels are pulled from the
-// i18n dictionary by the caller: `t(`${prefix}.${value}`)`. Keep "unknown"
-// first so it is the default option in a <select>.
+// Only the stored `value` slugs live here. Human labels come from i18n via
+// `t(`${prefix}.${value}`)`. "unknown" stays first so it is the default option.
 
 export const SUN_VALUES = ["unknown", "full-sun", "part-sun", "part-shade", "full-shade"];
 export const WATER_VALUES = ["unknown", "low", "moderate", "high", "very-high"];
@@ -63,6 +30,20 @@ export const SOIL_PH_VALUES = ["unknown", "acidic", "neutral", "alkaline"];
 export const GROWTH_RATE_VALUES = ["unknown", "slow", "medium", "fast"];
 export const WIND_TOLERANCE_VALUES = ["unknown", "low", "medium", "high"];
 export const POLLINATION_VALUES = ["unknown", "self", "needs-partner"];
+
+export const EVENT_TYPES = [
+  "repot",
+  "prune",
+  "fertilize",
+  "pest",
+  "treatment",
+  "flowering",
+  "fruit-set",
+  "harvest",
+  "problem",
+  "move",
+  "note",
+];
 
 // Factory for a blank tree so the shape is consistent everywhere.
 export function blankTree() {
@@ -114,13 +95,6 @@ export function blankTree() {
     quirks: "",
 
     // --- Recurring care tasks -> feed the "Needs attention" panel ---
-    // Each item: {
-    //   task: string,
-    //   intervalDays: number,             // fallback interval, always required
-    //   intervalDaysSummer: number|null,  // override for hot half (SH: Oct-Mar)
-    //   intervalDaysWinter: number|null,  // override for cold half (SH: Apr-Sep)
-    //   lastDone: ISOdate|null,
-    // }
     careSchedule: [],
 
     createdAt: now,
@@ -128,11 +102,8 @@ export function blankTree() {
   };
 }
 
-// --- Migration helpers ----------------------------------------------------
+// --- v1 -> v2 normalisation (also used on legacy backup/db import) --------
 
-// Best-effort mapping from v1 free-text to the v2 enum. Anything unrecognised
-// becomes "unknown"; the user re-selects on next edit. The original free text
-// is preserved as *Notes so no information is silently lost.
 function normalizeSunEnum(v) {
   if (!v || typeof v !== "string") return "unknown";
   const s = v.toLowerCase().trim();
@@ -157,7 +128,8 @@ function normalizeWaterEnum(v) {
   return "unknown";
 }
 
-// Migrate a v1 tree record in place to v2. Also usable from backup import.
+// Migrate a v1 tree record in place to v2. Usable from live migration and from
+// backup import. Preserves legacy free text as *Notes so nothing is lost.
 export function migrateTreeToV2(tree) {
   const oldObservedSun = typeof tree.observedSun === "string" ? tree.observedSun : "";
   const oldObservedWater = typeof tree.observedWater === "string" ? tree.observedWater : "";
@@ -167,7 +139,6 @@ export function migrateTreeToV2(tree) {
   tree.observedSun = normalizeSunEnum(oldObservedSun);
   tree.observedWater = normalizeWaterEnum(oldObservedWater);
 
-  // Preserve the old observed free text as notes if the normalisation lost it.
   if (tree.observedSunNotes == null) {
     tree.observedSunNotes =
       tree.observedSun === "unknown" && oldObservedSun ? oldObservedSun : "";
@@ -177,13 +148,11 @@ export function migrateTreeToV2(tree) {
       tree.observedWater === "unknown" && oldObservedWater ? oldObservedWater : "";
   }
 
-  // Split legacy pruning / fertilizer free-text into type + notes.
   if (tree.pruningTiming == null) tree.pruningTiming = "unknown";
   if (tree.pruningNotes == null) tree.pruningNotes = tree.pruningSpec ?? "";
   if (tree.fertilizerType == null) tree.fertilizerType = "unknown";
   if (tree.fertilizerNotes == null) tree.fertilizerNotes = tree.fertilizerSpec ?? "";
 
-  // Fields new in v2 default to null / unknown if missing on a v1 record.
   if (tree.chillHoursSpec === undefined) tree.chillHoursSpec = null;
   if (tree.deciduous == null) tree.deciduous = "unknown";
   if (tree.matureHeightM === undefined) tree.matureHeightM = null;
@@ -192,7 +161,6 @@ export function migrateTreeToV2(tree) {
   if (tree.growthRate == null) tree.growthRate = "unknown";
   if (tree.windTolerance == null) tree.windTolerance = "unknown";
 
-  // Seasonal fields on existing care schedule tasks — null means "no override".
   if (Array.isArray(tree.careSchedule)) {
     for (const t of tree.careSchedule) {
       if (t.intervalDaysSummer === undefined) t.intervalDaysSummer = null;
@@ -200,8 +168,6 @@ export function migrateTreeToV2(tree) {
     }
   }
 
-  // Legacy free-text fields are left on the record so old JSON backups still
-  // round-trip cleanly. The form no longer reads them.
   return tree;
 }
 
@@ -209,58 +175,6 @@ export function migrateTreeToV2(tree) {
 export function estimatedAgeMonths(tree) {
   if (!tree.purchaseDate || tree.claimedAgeMonthsAtPurchase == null) return null;
   const bought = new Date(tree.purchaseDate);
-  const monthsWithYou =
-    (Date.now() - bought.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+  const monthsWithYou = (Date.now() - bought.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
   return Math.round(tree.claimedAgeMonthsAtPurchase + monthsWithYou);
-}
-
-export const EVENT_TYPES = [
-  "repot",
-  "prune",
-  "fertilize",
-  "pest",
-  "treatment",
-  "flowering",
-  "fruit-set",
-  "harvest",
-  "problem",
-  "move",
-  "note",
-];
-
-// --- Write helpers (keep updatedAt fresh) --------------------------------
-
-export async function saveTree(tree) {
-  tree.updatedAt = new Date().toISOString();
-  if (tree.id == null) {
-    tree.createdAt = tree.updatedAt;
-    return db.trees.add(tree);
-  }
-  return db.trees.put(tree);
-}
-
-export async function addEvent(event) {
-  return db.events.add({
-    date: new Date().toISOString().slice(0, 10),
-    type: "note",
-    notes: "",
-    ...event,
-  });
-}
-
-export async function addPhoto({ treeId, eventId = null, blob }) {
-  return db.photos.add({
-    treeId,
-    eventId,
-    blob,
-    createdAt: new Date().toISOString(),
-  });
-}
-
-export async function deleteTree(id) {
-  await db.transaction("rw", db.trees, db.events, db.photos, async () => {
-    await db.trees.delete(id);
-    await db.events.where("treeId").equals(id).delete();
-    await db.photos.where("treeId").equals(id).delete();
-  });
 }

@@ -1,6 +1,6 @@
 // Single entry point for the data layer: the reactive hook, the repositories,
 // and the (storage-agnostic) model helpers/enums. Components import from here
-// and never from ../db.js directly.
+// and never from the backend directly.
 export { useLive } from "./useLive.js";
 export { trees, events, photos } from "./repository.js";
 export {
@@ -16,4 +16,4 @@ export {
   GROWTH_RATE_VALUES,
   WIND_TOLERANCE_VALUES,
   POLLINATION_VALUES,
-} from "../db.js";
+} from "./model.js";

@@ -1,5 +1,8 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { db, saveTree, blankTree, addEvent } from "../db.js";
+import { resetDatabase } from "../data/backend.js";
+import { trees, events } from "../data/repository.js";
+import { blankTree } from "../data/model.js";
 import { computeAttention, parseLocalDate } from "./attention.js";
 
 const DAY = 1000 * 60 * 60 * 24;
@@ -18,7 +21,7 @@ describe("parseLocalDate", () => {
 // so every test pins the clock. Southern hemisphere: summer = Oct-Mar.
 
 beforeEach(async () => {
-  await Promise.all([db.trees.clear(), db.events.clear(), db.photos.clear()]);
+  await resetDatabase();
 });
 
 afterEach(() => {
@@ -33,7 +36,7 @@ describe("computeAttention — care tasks", () => {
   it("flags a task that has never been done as overdue", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-07-15T00:00:00Z"));
-    await saveTree({
+    await trees.save({
       ...blankTree(),
       commonName: "Fig",
       careSchedule: [{ task: "water", intervalDays: 7, lastDone: null }],
@@ -51,7 +54,7 @@ describe("computeAttention — care tasks", () => {
     // July = winter in the southern hemisphere.
     const now = new Date("2026-07-15T00:00:00Z").getTime();
     vi.setSystemTime(now);
-    await saveTree({
+    await trees.save({
       ...blankTree(),
       careSchedule: [
         {
@@ -74,7 +77,7 @@ describe("computeAttention — care tasks", () => {
     // uses the 30-day default and 40 days makes it overdue.
     const now = new Date("2026-01-15T00:00:00Z").getTime();
     vi.setSystemTime(now);
-    await saveTree({
+    await trees.save({
       ...blankTree(),
       careSchedule: [
         {
@@ -97,10 +100,10 @@ describe("computeAttention — repot suggestion", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const now = new Date("2026-07-15T00:00:00Z").getTime();
     vi.setSystemTime(now);
-    const id = await saveTree({ ...blankTree(), commonName: "Olive" });
+    const id = await trees.save({ ...blankTree(), commonName: "Olive" });
     // Jan 1st: the exact date the UTC-parsing bug used to mislabel as the prior
     // year. parseLocalDate keeps it 2023.
-    await addEvent({ treeId: id, type: "repot", date: "2023-01-01" });
+    await events.add({ treeId: id, type: "repot", date: "2023-01-01" });
 
     const items = await computeAttention(2);
     const repot = items.find((i) => i.kind === "repot");
@@ -112,8 +115,8 @@ describe("computeAttention — repot suggestion", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const now = new Date("2026-07-15T00:00:00Z").getTime();
     vi.setSystemTime(now);
-    const id = await saveTree({ ...blankTree() });
-    await addEvent({ treeId: id, type: "repot", date: "2026-01-01" });
+    const id = await trees.save({ ...blankTree() });
+    await events.add({ treeId: id, type: "repot", date: "2026-01-01" });
 
     const items = await computeAttention(2);
     expect(items.find((i) => i.kind === "repot")).toBeUndefined();

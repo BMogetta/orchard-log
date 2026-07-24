@@ -1,9 +1,27 @@
-import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
+import { pouch } from "./backend.js";
 
-// Reactive-query seam. Components call useLive() instead of importing a
-// database library directly, so the storage engine can change underneath them.
-// Today it delegates to dexie-react-hooks; Phase 2 (PouchDB) reimplements this
-// over the changes feed without touching a single call site.
+// Reactive-query seam over PouchDB's changes feed. Runs the querier once, then
+// re-runs it on every database change and pushes the fresh result into state.
+// Coarse (any change re-queries), which is fine at this scale and keeps the
+// API identical to what the components already call.
 export function useLive(querier, deps = [], fallback) {
-  return useLiveQuery(querier, deps, fallback);
+  const [result, setResult] = useState(fallback);
+
+  useEffect(() => {
+    let active = true;
+    const run = () =>
+      Promise.resolve(querier()).then((r) => {
+        if (active) setResult(r);
+      });
+    run();
+    const feed = pouch.changes({ since: "now", live: true }).on("change", run);
+    return () => {
+      active = false;
+      feed.cancel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return result;
 }

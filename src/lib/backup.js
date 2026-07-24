@@ -1,61 +1,35 @@
-import { db, migrateTreeToV2 } from "../db.js";
+import { pouch, uid, resetDatabase } from "../data/backend.js";
+import { migrateTreeToV2 } from "../data/model.js";
 
 // ---------------------------------------------------------------------------
 // Local data can vanish (cleared browser, lost phone). Export early, export
-// often. This dumps EVERYTHING — trees, events, and photo blobs (base64) —
-// into one portable JSON file, and can restore from it.
+// often. This dumps EVERYTHING to one portable JSON file and restores from it.
 //
 // Backup format versions:
-//   1 — original free-text spec fields (sunSpec, waterSpec, pruningSpec, ...)
-//   2 — spec fields become closed enums; pruning/fertilizer split into
-//       type + notes; adds chillHoursSpec, deciduous, matureHeight/Spread,
-//       soilPhSpec, growthRate, windTolerance; careSchedule tasks gain
-//       intervalDaysSummer / intervalDaysWinter.
-// Older backups are migrated on import via migrateTreeToV2.
+//   1 — Dexie era: free-text spec fields, integer ids, photos as base64 blobs.
+//   2 — Dexie era: closed enums, split pruning/fertilizer, seasonal intervals.
+//   3 — PouchDB era: raw docs (UUID `_id`, photos as base64 attachments).
+// v1/v2 backups are transformed on import into v3 docs (new UUID ids), so old
+// backups stay loadable.
 // ---------------------------------------------------------------------------
 
-const BACKUP_VERSION = 2;
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
-}
-
-async function dataUrlToBlob(dataUrl) {
-  const res = await fetch(dataUrl);
-  return res.blob();
-}
+const BACKUP_VERSION = 3;
 
 export async function exportBackup() {
-  const [trees, events, photos] = await Promise.all([
-    db.trees.toArray(),
-    db.events.toArray(),
-    db.photos.toArray(),
-  ]);
-
-  const photosEncoded = await Promise.all(
-    photos.map(async (p) => ({
-      ...p,
-      blob: await blobToDataUrl(p.blob),
-    }))
-  );
+  const res = await pouch.allDocs({ include_docs: true, attachments: true });
+  const docs = res.rows
+    .map((r) => r.doc)
+    .filter((d) => !d._id.startsWith("_")) // skip _local/* (migration flag etc.)
+    .map(({ _rev, ...doc }) => doc); // fresh revs on restore
 
   const backup = {
     app: "orchard-log",
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    trees,
-    events,
-    photos: photosEncoded,
+    docs,
   };
 
-  const blob = new Blob([JSON.stringify(backup)], {
-    type: "application/json",
-  });
+  const blob = new Blob([JSON.stringify(backup)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -64,51 +38,79 @@ export async function exportBackup() {
   URL.revokeObjectURL(url);
 }
 
-// replace=true wipes current data first. Otherwise records are written by
-// their EXISTING id (bulkPut): if the imported ids overlap the current DB, the
-// matching records are overwritten, not merged. Auto-increment ids collide
-// across devices, so a real id-remapping merge is still a TODO — see the
-// project notes on shared/multi-device use before relying on merge.
+// replace=true wipes current data first; otherwise it merges. Merge is safe now
+// that ids are UUIDs — two devices' exports don't collide.
 export async function importBackup(file, { replace = false } = {}) {
-  const text = await file.text();
   let data;
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(await file.text());
   } catch {
     throw new Error("backup.invalidFile");
   }
   if (!data || data.app !== "orchard-log") {
-    // Message is an i18n key; the UI translates it before display.
     throw new Error("backup.invalidFile");
   }
-  // A file can carry the right marker but a broken shape. Reject anything whose
-  // record collections aren't arrays before we start writing to IndexedDB.
-  // (Missing keys are tolerated — older/partial backups may omit an empty one.)
-  const isArrayOrMissing = (v) => v == null || Array.isArray(v);
-  if (
-    !isArrayOrMissing(data.trees) ||
-    !isArrayOrMissing(data.events) ||
-    !isArrayOrMissing(data.photos)
-  ) {
-    throw new Error("backup.invalidStructure");
+
+  const version = data.version ?? 1;
+  let docs;
+  if (version >= 3) {
+    if (!Array.isArray(data.docs)) throw new Error("backup.invalidStructure");
+    docs = data.docs.map(({ _rev, ...d }) => d);
+  } else {
+    const isArrayOrNil = (v) => v == null || Array.isArray(v);
+    if (![data.trees, data.events, data.photos].every(isArrayOrNil)) {
+      throw new Error("backup.invalidStructure");
+    }
+    docs = legacyArraysToDocs(data, version);
   }
 
-  // Dexie's version.upgrade() only runs on live IndexedDB, not on records we
-  // bulk-put from a JSON file. Apply the same migration here so v1 backups
-  // land as v2 records.
-  const fileVersion = data.version ?? 1;
-  const treesToPut = (data.trees || []).map((t) =>
-    fileVersion < 2 ? migrateTreeToV2({ ...t }) : t
-  );
+  if (replace) await resetDatabase();
+  await pouch.bulkDocs(docs);
+}
 
-  await db.transaction("rw", db.trees, db.events, db.photos, async () => {
-    if (replace) {
-      await Promise.all([db.trees.clear(), db.events.clear(), db.photos.clear()]);
+// Transform a v1/v2 Dexie-shaped backup ({trees,events,photos} with integer
+// ids and data-URL photos) into v3 PouchDB docs, remapping ids to UUIDs.
+function legacyArraysToDocs(data, version) {
+  const treeIdMap = new Map();
+  const eventIdMap = new Map();
+  const out = [];
+
+  for (const t of data.trees || []) {
+    const src = version < 2 ? migrateTreeToV2({ ...t }) : { ...t };
+    const { id, ...rest } = src;
+    const _id = `tree:${uid()}`;
+    treeIdMap.set(id, _id);
+    out.push({ _id, ...rest });
+  }
+  for (const d of out) {
+    if (d.pollinationPartnerId != null) {
+      d.pollinationPartnerId = treeIdMap.get(d.pollinationPartnerId) ?? null;
     }
-    await db.trees.bulkPut(treesToPut);
-    await db.events.bulkPut(data.events || []);
-    for (const p of data.photos || []) {
-      await db.photos.put({ ...p, blob: await dataUrlToBlob(p.blob) });
-    }
-  });
+  }
+
+  for (const e of data.events || []) {
+    const { id, treeId, ...rest } = e;
+    const newTree = treeIdMap.get(treeId);
+    if (!newTree) continue;
+    const _id = `event:${uid()}`;
+    eventIdMap.set(id, _id);
+    out.push({ _id, treeId: newTree, ...rest });
+  }
+
+  for (const p of data.photos || []) {
+    const newTree = treeIdMap.get(p.treeId);
+    if (!newTree || !p.blob) continue;
+    // photo blob is a data URL: data:<content-type>;base64,<data>
+    const [meta, b64] = String(p.blob).split(",");
+    const contentType = /data:(.*?);/.exec(meta)?.[1] || "image/jpeg";
+    out.push({
+      _id: `photo:${uid()}`,
+      treeId: newTree,
+      eventId: p.eventId != null ? (eventIdMap.get(p.eventId) ?? null) : null,
+      createdAt: p.createdAt,
+      _attachments: { image: { content_type: contentType, data: b64 } },
+    });
+  }
+
+  return out;
 }

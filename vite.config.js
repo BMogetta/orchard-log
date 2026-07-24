@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -14,6 +15,12 @@ const base = process.env.BASE_PATH ?? "/";
 // IndexedDB (see src/db.js), so no network is ever required to read or write.
 export default defineConfig({
   base,
+  resolve: {
+    alias: {
+      // Production storage adapter: the browser's IndexedDB.
+      "@adapter": fileURLToPath(new URL("./src/data/adapter.js", import.meta.url)),
+    },
+  },
   plugins: [
     react(),
     VitePWA({

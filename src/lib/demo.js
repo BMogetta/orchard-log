@@ -1,4 +1,5 @@
-import { db, saveTree, addEvent, blankTree } from "../db.js";
+import { trees, events, blankTree } from "../data";
+import { resetDatabase } from "../data/backend.js";
 
 // Demo mode ships a public, local-only showcase (GitHub Pages): PouchDB/Dexie
 // with no sync, pre-seeded so the app isn't empty. Enabled at build time with
@@ -102,19 +103,17 @@ const sampleTrees = [
 // Seed only when the database is empty, so a returning visitor keeps whatever
 // they added in the demo (until they hit reset).
 export async function seedDemoData() {
-  if ((await db.trees.count()) > 0) return;
-  for (const { events, ...tree } of sampleTrees) {
-    const id = await saveTree({ ...blankTree(), ...tree });
-    for (const ev of events || []) {
-      await addEvent({ treeId: id, ...ev });
+  if ((await trees.all()).length > 0) return;
+  for (const { events: eventList, ...tree } of sampleTrees) {
+    const id = await trees.save({ ...blankTree(), ...tree });
+    for (const ev of eventList || []) {
+      await events.add({ treeId: id, ...ev });
     }
   }
 }
 
 // Wipe everything and re-seed — the "start over" button in the demo banner.
 export async function resetDemoData() {
-  await db.transaction("rw", db.trees, db.events, db.photos, async () => {
-    await Promise.all([db.trees.clear(), db.events.clear(), db.photos.clear()]);
-  });
+  await resetDatabase();
   await seedDemoData();
 }
