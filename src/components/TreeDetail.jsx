@@ -1,7 +1,10 @@
 import React, { useRef, useState } from "react";
 import { trees, events, photos, estimatedAgeMonths, EVENT_TYPES, useLive } from "../data";
 import { downscaleImage } from "../lib/image.js";
+import { harvestTotals } from "../lib/harvest.js";
 import { useT } from "../lib/i18n.jsx";
+
+const num = (v) => (v === "" || v == null ? null : Number(v));
 
 function useAgeLabel() {
   const { t } = useT();
@@ -54,7 +57,13 @@ export default function TreeDetail({ id, onBack, onEdit }) {
     [tree?.pollinationPartnerId]
   );
 
-  const [draft, setDraft] = useState({ type: "note", notes: "", date: today() });
+  const [draft, setDraft] = useState({
+    type: "note",
+    notes: "",
+    date: today(),
+    yieldAmount: "",
+    yieldUnit: "",
+  });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [lightbox, setLightbox] = useState(null);
@@ -67,14 +76,33 @@ export default function TreeDetail({ id, onBack, onEdit }) {
     return new Date().toISOString().slice(0, 10);
   }
 
+  // Build an event doc from a draft, attaching yield fields only for harvests.
+  function eventFromDraft(d) {
+    const ev = { type: d.type, date: d.date, notes: d.notes };
+    if (d.type === "harvest") {
+      ev.yieldAmount = num(d.yieldAmount);
+      ev.yieldUnit = d.yieldUnit ?? "";
+    } else {
+      ev.yieldAmount = null;
+      ev.yieldUnit = "";
+    }
+    return ev;
+  }
+
   async function logEvent() {
-    await events.add({ treeId: id, ...draft });
-    setDraft({ type: "note", notes: "", date: today() });
+    await events.add({ treeId: id, ...eventFromDraft(draft) });
+    setDraft({ type: "note", notes: "", date: today(), yieldAmount: "", yieldUnit: "" });
   }
 
   function startEdit(ev) {
     setEditingId(ev.id);
-    setEditDraft({ type: ev.type, date: ev.date, notes: ev.notes ?? "" });
+    setEditDraft({
+      type: ev.type,
+      date: ev.date,
+      notes: ev.notes ?? "",
+      yieldAmount: ev.yieldAmount ?? "",
+      yieldUnit: ev.yieldUnit ?? "",
+    });
   }
 
   function cancelEdit() {
@@ -84,7 +112,7 @@ export default function TreeDetail({ id, onBack, onEdit }) {
 
   async function saveEdit() {
     const original = eventList.find((e) => e.id === editingId);
-    await events.update({ ...original, ...editDraft });
+    await events.update({ ...original, ...eventFromDraft(editDraft) });
     cancelEdit();
   }
 
@@ -157,6 +185,8 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   const allPhotos = photoList || [];
   const loosePhotos = allPhotos.filter((p) => !p.eventId);
   const photosForEvent = (eventId) => allPhotos.filter((p) => p.eventId === eventId);
+
+  const harvests = harvestTotals(eventList || []);
 
   return (
     <section className="detail">
@@ -275,6 +305,22 @@ export default function TreeDetail({ id, onBack, onEdit }) {
         </div>
       )}
 
+      {harvests.length > 0 && (
+        <div className="harvest">
+          <h3>{t("treeDetail.harvestTitle")}</h3>
+          <ul className="harvest-totals">
+            {harvests.map((y) => (
+              <li key={y.year}>
+                <span className="hv-year">{y.year}</span>
+                <span className="hv-total">
+                  {y.total} {y.unit}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="photos">
         <div className="section-head">
           <h3>{t("treeDetail.photos")}</h3>
@@ -329,6 +375,23 @@ export default function TreeDetail({ id, onBack, onEdit }) {
             value={draft.notes}
             onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
           />
+          {draft.type === "harvest" && (
+            <>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                placeholder={t("treeDetail.yieldAmount")}
+                value={draft.yieldAmount}
+                onChange={(e) => setDraft({ ...draft, yieldAmount: e.target.value })}
+              />
+              <input
+                placeholder={t("treeDetail.yieldUnit")}
+                value={draft.yieldUnit}
+                onChange={(e) => setDraft({ ...draft, yieldUnit: e.target.value })}
+              />
+            </>
+          )}
           <button className="primary" onClick={logEvent}>
             {t("treeDetail.log")}
           </button>
@@ -358,6 +421,29 @@ export default function TreeDetail({ id, onBack, onEdit }) {
                   placeholder={t("treeDetail.notesPlaceholder")}
                   onChange={(ev) => setEditDraft({ ...editDraft, notes: ev.target.value })}
                 />
+                {editDraft.type === "harvest" && (
+                  <>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      className="days"
+                      placeholder={t("treeDetail.yieldAmount")}
+                      value={editDraft.yieldAmount}
+                      onChange={(ev) =>
+                        setEditDraft({ ...editDraft, yieldAmount: ev.target.value })
+                      }
+                    />
+                    <input
+                      className="days"
+                      placeholder={t("treeDetail.yieldUnit")}
+                      value={editDraft.yieldUnit}
+                      onChange={(ev) =>
+                        setEditDraft({ ...editDraft, yieldUnit: ev.target.value })
+                      }
+                    />
+                  </>
+                )}
                 <button className="primary sm" onClick={saveEdit}>
                   {t("common.save")}
                 </button>

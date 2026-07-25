@@ -95,7 +95,8 @@ const sampleTrees = [
       { task: "chequeo de riego", intervalDays: 5, intervalDaysSummer: 3, intervalDaysWinter: 10, lastDone: isoDaysAgo(2) },
     ],
     events: [
-      { type: "harvest", date: isoDaysAgo(365), notes: "primera cosecha: ~15 higos" },
+      { type: "harvest", date: isoDaysAgo(400), notes: "primera cosecha", yieldAmount: 15, yieldUnit: "higos" },
+      { type: "harvest", date: isoDaysAgo(30), notes: "segunda temporada", yieldAmount: 22, yieldUnit: "higos" },
     ],
   },
 ];

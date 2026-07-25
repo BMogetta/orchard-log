@@ -107,6 +107,9 @@ const dict = {
     "treeDetail.log": "Registrar",
     "treeDetail.eventDeleteConfirm": "¿Borrar este registro?",
     "treeDetail.photoDeleteConfirm": "¿Borrar esta foto?",
+    "treeDetail.harvestTitle": "Cosecha",
+    "treeDetail.yieldAmount": "Cantidad",
+    "treeDetail.yieldUnit": "Unidad (kg, u.)",
 
     // --- Tree form ---
     "treeForm.cancel": "← Cancelar",
@@ -331,6 +334,9 @@ const dict = {
     "treeDetail.log": "Log",
     "treeDetail.eventDeleteConfirm": "Delete this entry?",
     "treeDetail.photoDeleteConfirm": "Delete this photo?",
+    "treeDetail.harvestTitle": "Harvest",
+    "treeDetail.yieldAmount": "Amount",
+    "treeDetail.yieldUnit": "Unit (kg, pcs)",
 
     // --- Tree form ---
     "treeForm.cancel": "← Cancel",

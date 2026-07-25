@@ -93,7 +93,8 @@ Phase 0.5 demo, upgraded.
 - [x] Edit/delete events (inline in the timeline; `events.update`/`remove`).
 - [x] Photos per event, inline in the timeline, lightbox + delete
       (`+ Foto` per entry; `photos.remove`; shared full-screen lightbox).
-- [ ] Harvest/yield on `harvest` events, per-season totals.
+- [x] Harvest/yield on `harvest` events (amount + unit), per-year totals
+      (`lib/harvest.js`; summary in the tree detail).
 - [ ] List: search / sort / filter / group by species.
 - [ ] `.ics` export per care task.
 - [ ] Gentle periodic "export your data" nudge.

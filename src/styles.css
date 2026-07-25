@@ -134,6 +134,12 @@ button { font-family: var(--body); font-size: 15px; }
 .lightbox-actions { display: flex; gap: 12px; }
 .lightbox-actions button { background: var(--paper); }
 
+/* Harvest totals */
+.harvest-totals { list-style: none; padding: 0; margin: 0; max-width: 320px; }
+.harvest-totals li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.hv-year { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.hv-total { color: var(--amber); font-weight: 600; }
+
 /* Attention */
 .attention { background: var(--amber-soft); border: 1px solid #e4d3ad; border-radius: var(--radius); padding: 12px 14px; margin-bottom: 18px; }
 .attention h2 { color: var(--amber); font-size: 16px; }
