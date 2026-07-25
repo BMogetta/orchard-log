@@ -11,7 +11,13 @@ const FLAG = "_local/migrated-from-dexie";
 // Read the legacy Dexie stores with the raw IndexedDB API, so this file carries
 // no dependency on Dexie (which the app no longer bundles). Returns null when
 // there is nothing to migrate.
-function readLegacy() {
+async function readLegacy() {
+  // Opening a non-existent DB would create an empty one, so when the browser
+  // supports it, check the DB list first and bail out if there's no legacy DB.
+  if (indexedDB.databases) {
+    const dbs = await indexedDB.databases();
+    if (!dbs.some((d) => d.name === "orchard-log")) return null;
+  }
   return new Promise((resolve) => {
     let req;
     try {
