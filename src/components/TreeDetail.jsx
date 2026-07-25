@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { trees, events, photos, estimatedAgeMonths, EVENT_TYPES, useLive } from "../data";
 import { downscaleImage } from "../lib/image.js";
 import { useT } from "../lib/i18n.jsx";
@@ -26,10 +26,19 @@ function useEnumLabel() {
   };
 }
 
-function Photo({ blob }) {
+function Photo({ blob, onClick }) {
   const [url] = useState(() => URL.createObjectURL(blob));
   React.useEffect(() => () => URL.revokeObjectURL(url), [url]);
-  return <img className="thumb" src={url} alt="" />;
+  return (
+    <img className="thumb" src={url} alt="" onClick={onClick} role="button" tabIndex={0} />
+  );
+}
+
+// Full-size image for the lightbox overlay.
+function FullImage({ blob }) {
+  const [url] = useState(() => URL.createObjectURL(blob));
+  React.useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return <img className="lightbox-img" src={url} alt="" />;
 }
 
 export default function TreeDetail({ id, onBack, onEdit }) {
@@ -48,6 +57,9 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   const [draft, setDraft] = useState({ type: "note", notes: "", date: today() });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
+  const pendingEventId = useRef(null);
+  const eventPhotoRef = useRef(null);
 
   if (!tree) return <p className="empty">{t("common.loading")}</p>;
 
@@ -88,6 +100,28 @@ export default function TreeDetail({ id, onBack, onEdit }) {
     e.target.value = "";
   }
 
+  // Attach a photo to a specific timeline event (vs. the tree-level gallery).
+  function addPhotoToEvent(eventId) {
+    pendingEventId.current = eventId;
+    eventPhotoRef.current.click();
+  }
+
+  async function onPickEventPhoto(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const blob = await downscaleImage(file);
+    await photos.add({ treeId: id, eventId: pendingEventId.current, blob });
+    e.target.value = "";
+    pendingEventId.current = null;
+  }
+
+  async function deleteLightboxPhoto() {
+    if (confirm(t("treeDetail.photoDeleteConfirm"))) {
+      await photos.remove(lightbox.id);
+      setLightbox(null);
+    }
+  }
+
   async function markTaskDone(i) {
     const next = tree.careSchedule.slice();
     next[i] = { ...next[i], lastDone: today() };
@@ -117,6 +151,12 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   if (tree.potLiters) {
     metaBits.push(t("treeDetail.potLiters", { n: tree.potLiters }));
   }
+
+  // Loose photos (no event) fill the tree gallery; the rest render under their
+  // event in the timeline.
+  const allPhotos = photoList || [];
+  const loosePhotos = allPhotos.filter((p) => !p.eventId);
+  const photosForEvent = (eventId) => allPhotos.filter((p) => p.eventId === eventId);
 
   return (
     <section className="detail">
@@ -250,11 +290,21 @@ export default function TreeDetail({ id, onBack, onEdit }) {
           </label>
         </div>
         <div className="thumbs">
-          {(photoList || []).map((p) => (
-            <Photo key={p.id} blob={p.blob} />
+          {loosePhotos.map((p) => (
+            <Photo key={p.id} blob={p.blob} onClick={() => setLightbox(p)} />
           ))}
         </div>
       </div>
+
+      {/* Shared hidden input for attaching a photo to a specific event. */}
+      <input
+        ref={eventPhotoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={onPickEventPhoto}
+        hidden
+      />
 
       <div className="log">
         <h3>{t("treeDetail.clinicalHistory")}</h3>
@@ -317,22 +367,50 @@ export default function TreeDetail({ id, onBack, onEdit }) {
               </li>
             ) : (
               <li key={e.id}>
-                <span className="ev-date">{e.date}</span>
-                <span className={`ev-type t-${e.type}`}>{t(`eventType.${e.type}`)}</span>
-                <span className="ev-notes">{e.notes}</span>
-                <span className="ev-actions">
-                  <button className="link sm" onClick={() => startEdit(e)}>
-                    {t("common.edit")}
-                  </button>
-                  <button className="link danger sm" onClick={() => deleteEvent(e)}>
-                    {t("common.delete")}
-                  </button>
-                </span>
+                <div className="ev-row">
+                  <span className="ev-date">{e.date}</span>
+                  <span className={`ev-type t-${e.type}`}>{t(`eventType.${e.type}`)}</span>
+                  <span className="ev-notes">{e.notes}</span>
+                  <span className="ev-actions">
+                    <button className="link sm" onClick={() => startEdit(e)}>
+                      {t("common.edit")}
+                    </button>
+                    <button className="link sm" onClick={() => addPhotoToEvent(e.id)}>
+                      {t("treeDetail.addPhoto")}
+                    </button>
+                    <button className="link danger sm" onClick={() => deleteEvent(e)}>
+                      {t("common.delete")}
+                    </button>
+                  </span>
+                </div>
+                {photosForEvent(e.id).length > 0 && (
+                  <div className="ev-photos">
+                    {photosForEvent(e.id).map((p) => (
+                      <Photo key={p.id} blob={p.blob} onClick={() => setLightbox(p)} />
+                    ))}
+                  </div>
+                )}
               </li>
             )
           )}
         </ul>
       </div>
+
+      {lightbox && (
+        <div className="lightbox" onClick={() => setLightbox(null)}>
+          <div className="lightbox-inner" onClick={(e) => e.stopPropagation()}>
+            <FullImage blob={lightbox.blob} />
+            <div className="lightbox-actions">
+              <button className="link danger" onClick={deleteLightboxPhoto}>
+                {t("common.delete")}
+              </button>
+              <button className="ghost" onClick={() => setLightbox(null)}>
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

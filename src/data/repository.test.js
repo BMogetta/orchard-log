@@ -119,4 +119,20 @@ describe("photos repo", () => {
     expect(p.blob).toBeInstanceOf(Blob);
     expect(await new Response(p.blob).text()).toBe("img");
   });
+
+  it("attaches a photo to a specific event", async () => {
+    const treeId = await trees.save(blankTree());
+    const eventId = await events.add({ treeId, type: "note" });
+    await photos.add({ treeId, eventId, blob: new Blob(["x"]) });
+    const [p] = await photos.forTree(treeId);
+    expect(p.eventId).toBe(eventId);
+  });
+
+  it("remove deletes a single photo", async () => {
+    const treeId = await trees.save(blankTree());
+    await photos.add({ treeId, blob: new Blob(["a"]) });
+    const [p] = await photos.forTree(treeId);
+    await photos.remove(p.id);
+    expect(await photos.forTree(treeId)).toHaveLength(0);
+  });
 });

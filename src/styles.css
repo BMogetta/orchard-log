@@ -107,7 +107,7 @@ button { font-family: var(--body); font-size: 15px; }
 
 /* Photos */
 .thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
-.thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+.thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); cursor: pointer; }
 .file-btn { display: inline-flex; align-items: center; }
 
 /* Log / timeline */
@@ -115,15 +115,24 @@ button { font-family: var(--body); font-size: 15px; }
 .log-form input[placeholder="Notes"] { grid-column: 1 / -1; }
 .log-form .primary { grid-column: 1 / -1; }
 .timeline { list-style: none; padding: 0; margin: 0; }
-.timeline li { display: grid; grid-template-columns: 88px auto 1fr auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.timeline li { padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.ev-row { display: grid; grid-template-columns: 88px auto 1fr auto; gap: 8px; align-items: baseline; }
 .ev-date { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .ev-type { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--green); }
 .ev-type.t-problem, .ev-type.t-pest { color: var(--danger); }
 .ev-type.t-harvest, .ev-type.t-fruit-set { color: var(--amber); }
 .ev-actions { display: flex; gap: 2px; justify-self: end; }
 .ev-actions .sm { font-size: 12px; padding: 2px 6px; }
+.ev-photos { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px 96px; }
 .timeline li.ev-editing { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .primary.sm { padding: 5px 11px; font-size: 13px; }
+
+/* Photo lightbox */
+.lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.82); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+.lightbox-inner { display: flex; flex-direction: column; gap: 12px; align-items: center; max-width: 100%; }
+.lightbox-img { max-width: 92vw; max-height: 80vh; border-radius: var(--radius); }
+.lightbox-actions { display: flex; gap: 12px; }
+.lightbox-actions button { background: var(--paper); }
 
 /* Attention */
 .attention { background: var(--amber-soft); border: 1px solid #e4d3ad; border-radius: var(--radius); padding: 12px 14px; margin-bottom: 18px; }

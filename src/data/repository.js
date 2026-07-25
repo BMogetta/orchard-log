@@ -126,4 +126,9 @@ export const photos = {
     });
     return _id;
   },
+
+  remove: async (id) => {
+    const doc = await pouch.get(id);
+    await pouch.remove(doc);
+  },
 };

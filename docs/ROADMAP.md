@@ -91,7 +91,8 @@ Phase 0.5 demo, upgraded.
 ## Phase 4 — Features (platform now solid)
 
 - [x] Edit/delete events (inline in the timeline; `events.update`/`remove`).
-- [ ] Photos per event, inline in the timeline, lightbox + delete.
+- [x] Photos per event, inline in the timeline, lightbox + delete
+      (`+ Foto` per entry; `photos.remove`; shared full-screen lightbox).
 - [ ] Harvest/yield on `harvest` events, per-season totals.
 - [ ] List: search / sort / filter / group by species.
 - [ ] `.ics` export per care task.

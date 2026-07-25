@@ -30,6 +30,7 @@ const dict = {
     "common.edit": "Editar",
     "common.delete": "Borrar",
     "common.remove": "Quitar",
+    "common.close": "Cerrar",
     "common.dash": "—",
     "common.days.short": "d",
 
@@ -105,6 +106,7 @@ const dict = {
     "treeDetail.notesPlaceholder": "Notas",
     "treeDetail.log": "Registrar",
     "treeDetail.eventDeleteConfirm": "¿Borrar este registro?",
+    "treeDetail.photoDeleteConfirm": "¿Borrar esta foto?",
 
     // --- Tree form ---
     "treeForm.cancel": "← Cancelar",
@@ -252,6 +254,7 @@ const dict = {
     "common.edit": "Edit",
     "common.delete": "Delete",
     "common.remove": "Remove",
+    "common.close": "Close",
     "common.dash": "—",
     "common.days.short": "d",
 
@@ -327,6 +330,7 @@ const dict = {
     "treeDetail.notesPlaceholder": "Notes",
     "treeDetail.log": "Log",
     "treeDetail.eventDeleteConfirm": "Delete this entry?",
+    "treeDetail.photoDeleteConfirm": "Delete this photo?",
 
     // --- Tree form ---
     "treeForm.cancel": "← Cancel",
