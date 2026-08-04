@@ -256,6 +256,36 @@ describe("tree list controls", () => {
   });
 });
 
+describe("care task calendar export", () => {
+  it("downloads an .ics for a care task from the detail view", async () => {
+    await trees.save({
+      ...blankTree(),
+      commonName: "Rosemary",
+      careSchedule: [
+        {
+          task: "Water check",
+          intervalDays: 7,
+          intervalDaysSummer: null,
+          intervalDaysWinter: null,
+          lastDone: null,
+        },
+      ],
+    });
+    const captured = [];
+    window.URL.createObjectURL = vi.fn((blob) => (captured.push(blob), "blob:mock"));
+    renderApp();
+
+    fireEvent.click(await screen.findByText("Rosemary"));
+    fireEvent.click(await screen.findByText("Add to calendar"));
+
+    await waitFor(() => expect(captured.length).toBeGreaterThan(0));
+    expect(captured[0].type).toBe("text/calendar");
+    const ics = await captured[0].text();
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).toContain("RRULE:FREQ=DAILY;INTERVAL=7");
+  });
+});
+
 describe("backup round-trip through the UI", () => {
   it("exports the database to a backup file", async () => {
     await trees.save({ ...blankTree(), commonName: "Backup Me" });

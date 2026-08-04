@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { trees, events, photos, estimatedAgeMonths, EVENT_TYPES, useLive } from "../data";
 import { downscaleImage } from "../lib/image.js";
+import { downloadCareTaskIcs } from "../lib/ics.js";
 import { harvestTotals } from "../lib/harvest.js";
 import { useT } from "../lib/i18n.jsx";
 
@@ -297,9 +298,24 @@ export default function TreeDetail({ id, onBack, onEdit }) {
                   ? t("treeDetail.taskLast", { date: task.lastDone })
                   : t("treeDetail.taskNever")}
               </span>
-              <button className="ghost sm" onClick={() => markTaskDone(i)}>
-                {t("treeDetail.markDoneToday")}
-              </button>
+              <span className="row-gap">
+                <button
+                  className="ghost sm"
+                  onClick={() =>
+                    downloadCareTaskIcs({
+                      task,
+                      treeName: tree.commonName || tree.label || t("treeList.unnamed"),
+                      treeId: tree.id,
+                      index: i,
+                    })
+                  }
+                >
+                  {t("treeDetail.addToCalendar")}
+                </button>
+                <button className="ghost sm" onClick={() => markTaskDone(i)}>
+                  {t("treeDetail.markDoneToday")}
+                </button>
+              </span>
             </div>
           ))}
         </div>
