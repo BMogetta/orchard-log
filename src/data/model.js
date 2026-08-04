@@ -29,7 +29,7 @@ export const DECIDUOUS_VALUES = ["unknown", "deciduous", "evergreen", "semi-deci
 export const SOIL_PH_VALUES = ["unknown", "acidic", "neutral", "alkaline"];
 export const GROWTH_RATE_VALUES = ["unknown", "slow", "medium", "fast"];
 export const WIND_TOLERANCE_VALUES = ["unknown", "low", "medium", "high"];
-export const POLLINATION_VALUES = ["unknown", "self", "needs-partner"];
+export const POLLINATION_VALUES = ["unknown", "self", "partial-self", "needs-partner"];
 
 export const EVENT_TYPES = [
   "repot",

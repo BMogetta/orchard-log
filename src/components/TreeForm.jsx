@@ -337,7 +337,8 @@ export default function TreeForm({ id, onBack, onSaved }) {
             onChange={(v) => set({ pollination: v })}
           />
         </Field>
-        {tree.pollination === "needs-partner" && (
+        {(tree.pollination === "needs-partner" ||
+          tree.pollination === "partial-self") && (
           <Field label={t("treeForm.pollinationPartner")}>
             <select
               value={tree.pollinationPartnerId ?? ""}

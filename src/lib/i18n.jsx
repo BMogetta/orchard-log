@@ -101,6 +101,7 @@ const dict = {
     "treeDetail.quirks": "Particularidades",
     "treeDetail.pollinationPrefix": "Polinización: ",
     "treeDetail.pollinationSelf": "autofértil",
+    "treeDetail.pollinationPartial": "parcialmente autofértil",
     "treeDetail.pollinationNeeds": "necesita pareja",
     "treeDetail.pairedWith": " — con {name}",
     "treeDetail.noPartnerSet": " — sin pareja asignada",
@@ -243,6 +244,7 @@ const dict = {
 
     "pollination.unknown": "Desconocido",
     "pollination.self": "Autofértil",
+    "pollination.partial-self": "Parcialmente autofértil",
     "pollination.needs-partner": "Necesita pareja",
 
     "eventType.repot": "trasplante",
@@ -342,6 +344,7 @@ const dict = {
     "treeDetail.quirks": "Quirks",
     "treeDetail.pollinationPrefix": "Pollination: ",
     "treeDetail.pollinationSelf": "self-fertile",
+    "treeDetail.pollinationPartial": "partially self-fertile",
     "treeDetail.pollinationNeeds": "needs a partner",
     "treeDetail.pairedWith": " — paired with {name}",
     "treeDetail.noPartnerSet": " — no partner set",
@@ -484,6 +487,7 @@ const dict = {
 
     "pollination.unknown": "Unknown",
     "pollination.self": "Self-fertile",
+    "pollination.partial-self": "Partially self-fertile",
     "pollination.needs-partner": "Needs a partner",
 
     "eventType.repot": "repot",

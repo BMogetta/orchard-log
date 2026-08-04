@@ -285,13 +285,20 @@ export default function TreeDetail({ id, onBack, onEdit }) {
           {t("treeDetail.pollinationPrefix")}
           {tree.pollination === "self"
             ? t("treeDetail.pollinationSelf")
-            : t("treeDetail.pollinationNeeds")}
+            : tree.pollination === "partial-self"
+              ? t("treeDetail.pollinationPartial")
+              : t("treeDetail.pollinationNeeds")}
           {tree.pollination === "needs-partner" &&
             (partner
               ? t("treeDetail.pairedWith", {
                   name: partner.commonName || partner.label,
                 })
               : t("treeDetail.noPartnerSet"))}
+          {tree.pollination === "partial-self" &&
+            partner &&
+            t("treeDetail.pairedWith", {
+              name: partner.commonName || partner.label,
+            })}
         </p>
       )}
 

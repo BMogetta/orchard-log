@@ -95,6 +95,21 @@ describe("tree lifecycle", () => {
     expect(await screen.findByRole("heading", { name: "Peach" })).toBeInTheDocument();
     expect(screen.getByText("300–1000")).toBeInTheDocument();
   });
+
+  it("records a partially self-fertile pollination", async () => {
+    renderApp();
+    fireEvent.click(await screen.findByText("Add tree"));
+    fireEvent.change(await screen.findByLabelText("Common name"), {
+      target: { value: "Plum" },
+    });
+    fireEvent.change(screen.getByLabelText("Pollination"), {
+      target: { value: "partial-self" },
+    });
+    fireEvent.click(screen.getByText("Save tree"));
+
+    expect(await screen.findByRole("heading", { name: "Plum" })).toBeInTheDocument();
+    expect(screen.getByText(/partially self-fertile/)).toBeInTheDocument();
+  });
 });
 
 describe("timeline events", () => {
