@@ -65,6 +65,19 @@ button { font-family: var(--body); font-size: 15px; }
 .row-gap { display: flex; gap: 10px; align-items: center; }
 
 /* Tree list */
+.list-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.list-controls .search { flex: 1 1 200px; width: auto; }
+.list-controls select { width: auto; flex: 0 0 auto; }
+.list-controls .toggle {
+  display: flex; align-items: center; gap: 6px; width: auto;
+  font-size: 13px; color: var(--ink-soft); white-space: nowrap; cursor: pointer;
+}
+.list-controls .toggle input { width: auto; }
+.group-head {
+  margin: 16px 0 6px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--ink-soft); font-style: italic; font-weight: 600;
+}
+.group:first-of-type .group-head { margin-top: 4px; }
 .tree-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .tree-row {
   width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;

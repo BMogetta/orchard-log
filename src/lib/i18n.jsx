@@ -59,6 +59,15 @@ const dict = {
     "treeList.empty": "Todavía no hay árboles. Agregá el primero — arrancá con la etiqueta de la maceta y un nombre; el resto lo completás con el tiempo.",
     "treeList.unnamed": "Sin nombre",
     "treeList.needsPartner": "Necesita pareja de polinización",
+    "treeList.search": "Buscar por nombre o etiqueta…",
+    "treeList.sortBy": "Ordenar",
+    "treeList.sort.label": "Etiqueta",
+    "treeList.sort.name": "Nombre",
+    "treeList.sort.newest": "Más nuevos",
+    "treeList.onlyNeedsPartner": "Sólo sin pareja",
+    "treeList.groupBySpecies": "Por especie",
+    "treeList.noSpecies": "Sin especie",
+    "treeList.noMatches": "Ningún árbol coincide con los filtros.",
 
     // --- Tree detail ---
     "treeDetail.back": "← Todos los árboles",
@@ -286,6 +295,15 @@ const dict = {
     "treeList.empty": "No trees yet. Add your first one — start with just a pot label and a name, fill the rest in over time.",
     "treeList.unnamed": "Unnamed",
     "treeList.needsPartner": "Needs a pollination partner",
+    "treeList.search": "Search by name or label…",
+    "treeList.sortBy": "Sort",
+    "treeList.sort.label": "Pot label",
+    "treeList.sort.name": "Name",
+    "treeList.sort.newest": "Newest",
+    "treeList.onlyNeedsPartner": "Needs partner only",
+    "treeList.groupBySpecies": "By species",
+    "treeList.noSpecies": "No species",
+    "treeList.noMatches": "No trees match the filters.",
 
     // --- Tree detail ---
     "treeDetail.back": "← All trees",

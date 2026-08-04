@@ -193,6 +193,69 @@ describe("needs-attention list", () => {
   });
 });
 
+describe("tree list controls", () => {
+  const rowNames = (container) =>
+    [...container.querySelectorAll(".tree-row strong")].map((el) => el.textContent);
+
+  it("filters the list by the search box", async () => {
+    await trees.save({ ...blankTree(), commonName: "Meyer Lemon" });
+    await trees.save({ ...blankTree(), commonName: "Black Mission Fig" });
+    await trees.save({ ...blankTree(), commonName: "Kumquat" });
+    renderApp();
+    await screen.findByText("Kumquat");
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by name/), {
+      target: { value: "fig" },
+    });
+
+    expect(screen.getByText("Black Mission Fig")).toBeInTheDocument();
+    expect(screen.queryByText("Meyer Lemon")).toBeNull();
+    expect(screen.queryByText("Kumquat")).toBeNull();
+  });
+
+  it("filters to only trees needing a pollination partner", async () => {
+    await trees.save({ ...blankTree(), commonName: "Apple", pollination: "needs-partner" });
+    await trees.save({ ...blankTree(), commonName: "Peach", pollination: "self" });
+    renderApp();
+    await screen.findByText("Apple");
+
+    fireEvent.click(screen.getByLabelText(/Needs partner only/));
+
+    expect(screen.getByText("Apple")).toBeInTheDocument();
+    expect(screen.queryByText("Peach")).toBeNull();
+  });
+
+  it("reorders the list by the chosen sort", async () => {
+    await trees.save({ ...blankTree(), label: "03", commonName: "Apple" });
+    await trees.save({ ...blankTree(), label: "01", commonName: "Cherry" });
+    await trees.save({ ...blankTree(), label: "02", commonName: "Banana" });
+    const { container } = renderApp();
+    await screen.findByText("Cherry");
+
+    // Default sort is by pot label: 01 Cherry, 02 Banana, 03 Apple.
+    expect(rowNames(container)).toEqual(["Cherry", "Banana", "Apple"]);
+
+    fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "name" } });
+    expect(rowNames(container)).toEqual(["Apple", "Banana", "Cherry"]);
+  });
+
+  it("groups trees under species headings", async () => {
+    await trees.save({ ...blankTree(), commonName: "Meyer Lemon", scientificName: "Citrus × limon" });
+    await trees.save({ ...blankTree(), commonName: "Eureka Lemon", scientificName: "Citrus × limon" });
+    await trees.save({ ...blankTree(), commonName: "Fig", scientificName: "Ficus carica" });
+    renderApp();
+    await screen.findByText("Fig");
+
+    fireEvent.click(screen.getByLabelText(/By species/));
+
+    expect(screen.getByRole("heading", { name: "Citrus × limon" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ficus carica" })).toBeInTheDocument();
+    // both lemons still present, grouped together
+    expect(screen.getByText("Meyer Lemon")).toBeInTheDocument();
+    expect(screen.getByText("Eureka Lemon")).toBeInTheDocument();
+  });
+});
+
 describe("backup round-trip through the UI", () => {
   it("exports the database to a backup file", async () => {
     await trees.save({ ...blankTree(), commonName: "Backup Me" });
