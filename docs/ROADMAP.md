@@ -102,7 +102,7 @@ Phase 0.5 demo, upgraded.
 - [x] Harvest/yield on `harvest` events (amount + unit), per-year totals
       (`lib/harvest.js`; summary in the tree detail).
 - [x] List: search / sort / filter (needs-partner) / group by species.
-- [ ] `.ics` export per care task.
+- [x] `.ics` export per care task (recurring VEVENT + alarm; `lib/ics.js`).
 - [ ] Gentle periodic "export your data" nudge.
 
 ## Phase 5 — CI/CD + deployment testing
