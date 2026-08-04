@@ -1,0 +1,57 @@
+# Local CouchDB for developing the sync layer (Phase 3). Dev convenience only —
+# production sync runs against a self-hosted CouchDB on the Pi behind Cloudflare
+# Tunnel + Access. Nothing here is required to run the app locally (it stays
+# local-first); it only exists to exercise replication.
+#
+#   docker compose up -d      # start CouchDB + one-shot setup on :5984
+#   docker compose down       # stop (data survives in the named volume)
+#   docker compose down -v    # stop and wipe the database
+#
+# Admin console (Fauxton): http://localhost:5984/_utils  (admin / password)
+services:
+  couchdb:
+    image: couchdb:3
+    container_name: orchard-couchdb
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: password
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb-data:/opt/couchdb/data
+
+  # Runs once after CouchDB is reachable: forces single-node replica count,
+  # enables CORS so the browser can replicate directly, and creates the system
+  # databases plus the app database. Idempotent — safe to re-run on every `up`.
+  # (System dbs persist in the data volume; CORS config is re-applied each run
+  # since it lives in the container's ephemeral config.)
+  couchdb-setup:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      - couchdb
+    restart: "no"
+    environment:
+      COUCH: http://admin:password@couchdb:5984
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        echo "waiting for couchdb..."
+        until curl -sf "$$COUCH/" >/dev/null; do sleep 1; done
+        cfg() { curl -sf -X PUT "$$COUCH/_node/_local/_config/$$1" -d "\"$$2\"" >/dev/null; }
+        db()  { curl -sf -X PUT "$$COUCH/$$1" >/dev/null || true; }
+        cfg cluster/n 1
+        cfg chttpd/enable_cors true
+        cfg cors/origins '*'
+        cfg cors/credentials true
+        cfg cors/methods 'GET, PUT, POST, HEAD, DELETE'
+        cfg cors/headers 'accept, authorization, content-type, origin, referer'
+        db _users
+        db _replicator
+        db _global_changes
+        db orchard
+        echo "couchdb ready: system dbs + orchard created, CORS enabled"
+
+volumes:
+  couchdb-data:
