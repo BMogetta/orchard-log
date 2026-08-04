@@ -32,6 +32,8 @@ const dict = {
     "common.remove": "Quitar",
     "common.close": "Cerrar",
     "common.dash": "—",
+    "common.min": "mín",
+    "common.max": "máx",
     "common.days.short": "d",
 
     // --- Backup panel ---
@@ -84,6 +86,7 @@ const dict = {
     "treeDetail.sun": "Sol",
     "treeDetail.water": "Riego",
     "treeDetail.minTemp": "Mín °C",
+    "treeDetail.maxTemp": "Máx °C",
     "treeDetail.chillHours": "Horas de frío",
     "treeDetail.leafHabit": "Hábito foliar",
     "treeDetail.matureSize": "Tamaño adulto",
@@ -152,6 +155,7 @@ const dict = {
     "treeForm.sun": "Sol",
     "treeForm.water": "Riego",
     "treeForm.minTemp": "Temperatura mínima (°C)",
+    "treeForm.maxTemp": "Temperatura máxima (°C)",
     "treeForm.chillHours": "Horas de frío requeridas",
     "treeForm.chillHoursHint": "Horas bajo ~7°C necesarias para florecer. Frutales de carozo 300-1000; cítricos 0.",
     "treeForm.deciduous": "Caducifolio / perenne",
@@ -269,6 +273,8 @@ const dict = {
     "common.remove": "Remove",
     "common.close": "Close",
     "common.dash": "—",
+    "common.min": "min",
+    "common.max": "max",
     "common.days.short": "d",
 
     // --- Backup panel ---
@@ -321,6 +327,7 @@ const dict = {
     "treeDetail.sun": "Sun",
     "treeDetail.water": "Water",
     "treeDetail.minTemp": "Min °C",
+    "treeDetail.maxTemp": "Max °C",
     "treeDetail.chillHours": "Chill hours",
     "treeDetail.leafHabit": "Leaf habit",
     "treeDetail.matureSize": "Mature size",
@@ -389,6 +396,7 @@ const dict = {
     "treeForm.sun": "Sun",
     "treeForm.water": "Water",
     "treeForm.minTemp": "Min temperature (°C)",
+    "treeForm.maxTemp": "Max temperature (°C)",
     "treeForm.chillHours": "Chill hours needed",
     "treeForm.chillHoursHint": "Hours under ~7°C required for flowering. Stone fruit 300-1000; citrus 0.",
     "treeForm.deciduous": "Deciduous / evergreen",

@@ -176,6 +176,9 @@ input[type="checkbox"] { width: auto; }
 textarea { min-height: 64px; resize: vertical; }
 .task-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .task-row .days { width: 70px; }
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row input { flex: 1 1 0; width: auto; }
+.range-sep { color: var(--ink-soft); }
 .task-row .unit { color: var(--ink-soft); font-size: 13px; }
 
 .empty { color: var(--ink-soft); font-style: italic; }

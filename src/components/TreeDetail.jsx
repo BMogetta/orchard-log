@@ -173,6 +173,18 @@ export default function TreeDetail({ id, onBack, onEdit }) {
         })
       : null;
 
+  // Chill hours: a min–max range, tolerant of legacy single-value docs.
+  const chillMin = tree.chillHoursMinSpec ?? tree.chillHoursSpec ?? null;
+  const chillMax = tree.chillHoursMaxSpec ?? null;
+  const chillHours =
+    chillMin != null && chillMax != null
+      ? `${chillMin}–${chillMax}`
+      : chillMin != null
+        ? String(chillMin)
+        : chillMax != null
+          ? String(chillMax)
+          : null;
+
   const metaBits = [ageLabel(estimatedAgeMonths(tree))];
   if (tree.grafted && tree.rootstock) {
     metaBits.push(t("treeDetail.onRootstock", { rootstock: tree.rootstock }));
@@ -223,7 +235,8 @@ export default function TreeDetail({ id, onBack, onEdit }) {
           <Line k={t("treeDetail.sun")} v={enumLabel("sun", tree.sunSpec)} />
           <Line k={t("treeDetail.water")} v={enumLabel("water", tree.waterSpec)} />
           <Line k={t("treeDetail.minTemp")} v={tree.minTempC} />
-          <Line k={t("treeDetail.chillHours")} v={tree.chillHoursSpec} />
+          <Line k={t("treeDetail.maxTemp")} v={tree.maxTempC} />
+          <Line k={t("treeDetail.chillHours")} v={chillHours} />
           <Line
             k={t("treeDetail.leafHabit")}
             v={enumLabel("deciduous", tree.deciduous)}

@@ -46,8 +46,16 @@ export default function TreeForm({ id, onBack, onSaved }) {
   const others = useLive(() => trees.all(), []) || [];
 
   useEffect(() => {
-    if (id == null) setTree(blankTree());
-    else trees.get(id).then((tr) => setTree(tr || blankTree()));
+    if (id == null) return setTree(blankTree());
+    trees.get(id).then((tr) => {
+      if (!tr) return setTree(blankTree());
+      // Adopt a legacy single chill-hours value into the range minimum, so it
+      // shows in the form (and is cleaned up on save) instead of an empty field.
+      if (tr.chillHoursMinSpec == null && tr.chillHoursSpec != null) {
+        tr = { ...tr, chillHoursMinSpec: tr.chillHoursSpec, chillHoursSpec: null };
+      }
+      setTree(tr);
+    });
   }, [id]);
 
   if (!tree) return <p className="empty">{t("common.loading")}</p>;
@@ -206,12 +214,29 @@ export default function TreeForm({ id, onBack, onSaved }) {
             onChange={(e) => set({ minTempC: num(e.target.value) })}
           />
         </Field>
-        <Field label={t("treeForm.chillHours")} hint={t("treeForm.chillHoursHint")}>
+        <Field label={t("treeForm.maxTemp")}>
           <input
             type="number"
-            value={tree.chillHoursSpec ?? ""}
-            onChange={(e) => set({ chillHoursSpec: num(e.target.value) })}
+            value={tree.maxTempC ?? ""}
+            onChange={(e) => set({ maxTempC: num(e.target.value) })}
           />
+        </Field>
+        <Field label={t("treeForm.chillHours")} hint={t("treeForm.chillHoursHint")}>
+          <div className="range-row">
+            <input
+              type="number"
+              placeholder={t("common.min")}
+              value={tree.chillHoursMinSpec ?? ""}
+              onChange={(e) => set({ chillHoursMinSpec: num(e.target.value) })}
+            />
+            <span className="range-sep">–</span>
+            <input
+              type="number"
+              placeholder={t("common.max")}
+              value={tree.chillHoursMaxSpec ?? ""}
+              onChange={(e) => set({ chillHoursMaxSpec: num(e.target.value) })}
+            />
+          </div>
         </Field>
         <Field label={t("treeForm.deciduous")}>
           <EnumSelect

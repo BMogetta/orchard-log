@@ -81,6 +81,20 @@ describe("tree lifecycle", () => {
     fireEvent.click(screen.getByText("← All trees"));
     expect(await screen.findByText("Meyer Lemon")).toBeInTheDocument();
   });
+
+  it("records chill hours as a min–max range", async () => {
+    renderApp();
+    fireEvent.click(await screen.findByText("Add tree"));
+    fireEvent.change(await screen.findByLabelText("Common name"), {
+      target: { value: "Peach" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("min"), { target: { value: "300" } });
+    fireEvent.change(screen.getByPlaceholderText("max"), { target: { value: "1000" } });
+    fireEvent.click(screen.getByText("Save tree"));
+
+    expect(await screen.findByRole("heading", { name: "Peach" })).toBeInTheDocument();
+    expect(screen.getByText("300–1000")).toBeInTheDocument();
+  });
 });
 
 describe("timeline events", () => {

@@ -55,7 +55,15 @@ describe("migrateTreeToV2 — enum normalisation", () => {
     const t = migrateTreeToV2({});
     expect(t.deciduous).toBe("unknown");
     expect(t.soilPhSpec).toBe("unknown");
-    expect(t.chillHoursSpec).toBeNull();
+    expect(t.chillHoursMinSpec).toBeNull();
+    expect(t.chillHoursMaxSpec).toBeNull();
     expect(t.matureHeightM).toBeNull();
+  });
+
+  it("maps a legacy single chill-hours value into the range minimum", () => {
+    const t = migrateTreeToV2({ chillHoursSpec: 600 });
+    expect(t.chillHoursMinSpec).toBe(600);
+    expect(t.chillHoursMaxSpec).toBeNull();
+    expect(t.chillHoursSpec).toBeUndefined();
   });
 });

@@ -71,7 +71,9 @@ export function blankTree() {
     sunSpec: "unknown",
     waterSpec: "unknown",
     minTempC: null, // cold hardiness floor
-    chillHoursSpec: null, // hours < ~7C required for flowering (stone fruit)
+    maxTempC: null, // heat tolerance ceiling
+    chillHoursMinSpec: null, // hours < ~7C required for flowering; a min–max range
+    chillHoursMaxSpec: null,
     deciduous: "unknown", // deciduous | evergreen | semi-deciduous
     matureHeightM: null,
     matureSpreadM: null,
@@ -153,7 +155,12 @@ export function migrateTreeToV2(tree) {
   if (tree.fertilizerType == null) tree.fertilizerType = "unknown";
   if (tree.fertilizerNotes == null) tree.fertilizerNotes = tree.fertilizerSpec ?? "";
 
-  if (tree.chillHoursSpec === undefined) tree.chillHoursSpec = null;
+  // Chill hours became a min–max range; carry a legacy single value into the min.
+  if (tree.chillHoursMinSpec === undefined) {
+    tree.chillHoursMinSpec = tree.chillHoursSpec ?? null;
+  }
+  if (tree.chillHoursMaxSpec === undefined) tree.chillHoursMaxSpec = null;
+  delete tree.chillHoursSpec;
   if (tree.deciduous == null) tree.deciduous = "unknown";
   if (tree.matureHeightM === undefined) tree.matureHeightM = null;
   if (tree.matureSpreadM === undefined) tree.matureSpreadM = null;
