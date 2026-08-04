@@ -80,11 +80,17 @@ Phase 0.5 demo, upgraded.
 
 ## Phase 3 — Sync backend (CouchDB on the Pi)
 
-- [ ] CouchDB container (compose/k3s), per-couple db, users, CORS.
+- [x] App (dev slice): optional live `PouchDB.sync(local, remote, {live, retry})`
+      bolted onto the shared local pouch (`data/sync.js`), gated by
+      `VITE_COUCHDB_URL`. No-op when unset (stays local-first); demo never syncs.
+      Credentials travel via PouchDB's `auth` option, not in the URL (browsers
+      reject credentialed fetch URLs).
+- [x] Local dev CouchDB (`docker-compose.yml`): couchdb:3 + one-shot setup
+      (single-node, CORS, system dbs + `orchard`). Docker only, not for CI.
+- [ ] App (product): settings toggle + credentials UI; sync-status indicator;
+      conflict strategy.
+- [ ] CouchDB container on the Pi, per-couple db, users, CORS.
 - [ ] Cloudflare Tunnel + Access in front (only the two of them).
-- [ ] App: optional `PouchDB.sync(local, remote, {live, retry})` behind a
-      settings toggle + credentials; sync-status indicator; conflict strategy.
-- [ ] Demo build keeps sync off (`VITE_DEMO`).
 
 **Exit:** real shared plants across both phones, offline-first.
 
@@ -103,8 +109,13 @@ Phase 0.5 demo, upgraded.
 
 - [x] `ci.yml`: pnpm install → lint → test → build ×2 (base `/` and project base).
 - [x] `deploy-pages.yml`: demo build (`VITE_DEMO=1`, `BASE_PATH`) → GitHub Pages.
+- [x] E2E coverage inside the Vitest run (so CI already gates it, no Docker or
+      browser needed): UI flow tests over the real App on the in-memory adapter
+      (`test/flows.test.jsx`) + CouchDB sync tests via an in-process
+      express-pouchdb server (`test/sync.test.js`).
 - [ ] Real app → Cloudflare Pages.
-- [ ] Playwright smoke test of critical flows against the deploys.
+- [ ] Playwright smoke test of critical flows against the *deployed* build
+      (real browser / IndexedDB / service worker; complements the jsdom flows).
 
 ## Phase 6 — Docs
 
