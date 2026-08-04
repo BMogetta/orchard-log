@@ -101,7 +101,7 @@ Phase 0.5 demo, upgraded.
       (`+ Foto` per entry; `photos.remove`; shared full-screen lightbox).
 - [x] Harvest/yield on `harvest` events (amount + unit), per-year totals
       (`lib/harvest.js`; summary in the tree detail).
-- [ ] List: search / sort / filter / group by species.
+- [x] List: search / sort / filter (needs-partner) / group by species.
 - [ ] `.ics` export per care task.
 - [ ] Gentle periodic "export your data" nudge.
 
