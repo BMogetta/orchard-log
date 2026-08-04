@@ -5,7 +5,7 @@ import React from "react";
 import App from "../src/App.jsx";
 import { I18nProvider } from "../src/lib/i18n.jsx";
 import { resetDatabase } from "../src/data/backend.js";
-import { trees } from "../src/data/repository.js";
+import { trees, zones } from "../src/data/repository.js";
 import { blankTree } from "../src/data/model.js";
 
 // jsdom's Blob/File lack arrayBuffer()/text(), which backup export/import and
@@ -282,6 +282,40 @@ describe("tree list controls", () => {
     // both lemons still present, grouped together
     expect(screen.getByText("Meyer Lemon")).toBeInTheDocument();
     expect(screen.getByText("Eureka Lemon")).toBeInTheDocument();
+  });
+});
+
+describe("location zones", () => {
+  it("adds a zone in the zones panel", async () => {
+    renderApp();
+    fireEvent.click(await screen.findByText("Zones"));
+    fireEvent.change(screen.getByPlaceholderText("New zone"), {
+      target: { value: "Greenhouse" },
+    });
+    fireEvent.click(screen.getByText("Add"));
+    expect(await screen.findByText("Greenhouse")).toBeInTheDocument();
+  });
+
+  it("offers zones as the tree location in the form", async () => {
+    await zones.save(["Rooftop"]);
+    renderApp();
+    fireEvent.click(await screen.findByText("Add tree"));
+    await screen.findByLabelText("Location");
+    expect(await screen.findByRole("option", { name: "Rooftop" })).toBeInTheDocument();
+  });
+
+  it("filters the landing by zone", async () => {
+    await zones.save(["North terrace", "Balcony"]);
+    await trees.save({ ...blankTree(), commonName: "Lemon", positionOnTerrace: "North terrace" });
+    await trees.save({ ...blankTree(), commonName: "Fig", positionOnTerrace: "Balcony" });
+    renderApp();
+    await screen.findByText("Lemon");
+
+    fireEvent.change(screen.getByLabelText("Location"), {
+      target: { value: "North terrace" },
+    });
+    expect(screen.getByText("Lemon")).toBeInTheDocument();
+    expect(screen.queryByText("Fig")).toBeNull();
   });
 });
 

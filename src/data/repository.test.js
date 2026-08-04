@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { resetDatabase } from "./backend.js";
 import { blankTree } from "./model.js";
-import { trees, events, photos } from "./repository.js";
+import { trees, events, photos, zones } from "./repository.js";
 
 // The repository is the seam the whole UI depends on. These lock its API shape,
 // id handling, ordering, and photo-attachment round-trip against the PouchDB
@@ -107,6 +107,20 @@ describe("events repo", () => {
     const left = await events.forTree(treeId);
     expect(left).toHaveLength(1);
     expect(left[0].notes).toBe("keep");
+  });
+});
+
+describe("zones repo", () => {
+  it("returns [] when unset and round-trips a saved list", async () => {
+    expect(await zones.list()).toEqual([]);
+    await zones.save(["Terraza norte", "Balcón"]);
+    expect(await zones.list()).toEqual(["Terraza norte", "Balcón"]);
+  });
+
+  it("updates the list in place across saves", async () => {
+    await zones.save(["A"]);
+    await zones.save(["A", "B"]);
+    expect(await zones.list()).toEqual(["A", "B"]);
   });
 });
 

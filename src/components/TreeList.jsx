@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { trees, useLive } from "../data";
+import { trees, zones, useLive } from "../data";
 import { useT } from "../lib/i18n.jsx";
 
 const norm = (s) => (s || "").toLowerCase().trim();
@@ -37,15 +37,23 @@ function TreeRow({ tree, onOpen }) {
 export default function TreeList({ onOpen, onNew }) {
   const { t } = useT();
   const list = useLive(() => trees.all(), []);
+  const zoneList = useLive(() => zones.list(), []) || [];
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("label");
   const [needsPartnerOnly, setNeedsPartnerOnly] = useState(false);
   const [grouped, setGrouped] = useState(false);
+  const [zoneFilter, setZoneFilter] = useState("__all__"); // __all__ | <zone> | "" (undefined)
 
   const total = list?.length ?? 0;
 
-  // search over the identity fields, then the needs-partner filter, then sort.
+  const inZoneFilter = (tr) => {
+    if (zoneFilter === "__all__") return true;
+    if (zoneFilter === "") return !zoneList.includes(tr.positionOnTerrace); // undefined/orphan
+    return tr.positionOnTerrace === zoneFilter;
+  };
+
+  // search over the identity fields, then the zone + needs-partner filters, then sort.
   const q = norm(query);
   const visible = (list || [])
     .filter((tr) =>
@@ -55,6 +63,7 @@ export default function TreeList({ onOpen, onNew }) {
             norm(v).includes(q)
           )
     )
+    .filter(inZoneFilter)
     .filter((tr) => !needsPartnerOnly || tr.pollination === "needs-partner")
     .sort(SORTERS[sort]);
 
@@ -103,6 +112,21 @@ export default function TreeList({ onOpen, onNew }) {
             <option value="name">{t("treeList.sort.name")}</option>
             <option value="newest">{t("treeList.sort.newest")}</option>
           </select>
+          {zoneList.length > 0 && (
+            <select
+              aria-label={t("treeDetail.position")}
+              value={zoneFilter}
+              onChange={(e) => setZoneFilter(e.target.value)}
+            >
+              <option value="__all__">{t("treeList.zoneAll")}</option>
+              {zoneList.map((z) => (
+                <option key={z} value={z}>
+                  {z}
+                </option>
+              ))}
+              <option value="">{t("zones.none")}</option>
+            </select>
+          )}
           <label className="toggle">
             <input
               type="checkbox"

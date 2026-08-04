@@ -2,7 +2,7 @@
 // and the (storage-agnostic) model helpers/enums. Components import from here
 // and never from the backend directly.
 export { useLive } from "./useLive.js";
-export { trees, events, photos } from "./repository.js";
+export { trees, events, photos, zones } from "./repository.js";
 export {
   blankTree,
   estimatedAgeMonths,

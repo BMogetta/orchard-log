@@ -4,6 +4,7 @@ import TreeDetail from "./components/TreeDetail.jsx";
 import TreeForm from "./components/TreeForm.jsx";
 import AttentionPanel from "./components/AttentionPanel.jsx";
 import BackupControls from "./components/BackupControls.jsx";
+import ZonesControls from "./components/ZonesControls.jsx";
 import DemoBanner from "./components/DemoBanner.jsx";
 import { isDemo } from "./lib/demo.js";
 import { useT } from "./lib/i18n.jsx";
@@ -13,7 +14,9 @@ export default function App() {
   const { t, toggleLang } = useT();
   const [view, setView] = useState("list");
   const [selectedId, setSelectedId] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menu, setMenu] = useState(null); // null | "zones" | "backup"
+
+  const toggleMenu = (m) => setMenu((cur) => (cur === m ? null : m));
 
   function openDetail(id) {
     setSelectedId(id);
@@ -46,7 +49,10 @@ export default function App() {
           >
             {t("nav.switchTo")}
           </button>
-          <button className="icon-btn" onClick={() => setMenuOpen((v) => !v)}>
+          <button className="icon-btn" onClick={() => toggleMenu("zones")}>
+            {t("nav.zones")}
+          </button>
+          <button className="icon-btn" onClick={() => toggleMenu("backup")}>
             {t("nav.backup")}
           </button>
         </div>
@@ -54,9 +60,15 @@ export default function App() {
 
       {isDemo && <DemoBanner />}
 
-      {menuOpen && (
+      {menu === "zones" && (
         <div className="menu-sheet">
-          <BackupControls onDone={() => setMenuOpen(false)} />
+          <ZonesControls />
+        </div>
+      )}
+
+      {menu === "backup" && (
+        <div className="menu-sheet">
+          <BackupControls onDone={() => setMenu(null)} />
         </div>
       )}
 
