@@ -10,6 +10,12 @@
   --amber-soft: #f2e6cf;
   --danger: #a33a2a;
   --radius: 10px;
+  /* TreeIcon glyph palette (foliage + pollination + condition badge) */
+  --tree-leaf: #639922;
+  --tree-bark: #7a5230;
+  --tree-pollen: #ba7517;
+  --tree-water: #378add;
+  --tree-alert: #e24b4a;
   --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
@@ -79,13 +85,35 @@ button { font-family: var(--body); font-size: 15px; }
 }
 .group:first-of-type .group-head { margin-top: 4px; }
 .tree-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* Card grid — gives the composable tree glyph room to read */
+.tree-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; }
+.tree-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: 100%; text-align: center; cursor: pointer; font: inherit; color: inherit;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 12px 14px;
+}
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; min-height: 26px; }
+.card-glyph { margin: 2px 0; }
+.card-glyph.placeholder { width: 56px; height: 56px; border: 2px dashed var(--line); border-radius: 50%; }
+.card-body { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.card-body strong { font-size: 15px; line-height: 1.2; }
+.card-sub { color: var(--ink-soft); font-style: italic; }
+.tree-card .subline { justify-content: center; }
 .tree-row {
   width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
   background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 12px 14px; cursor: pointer;
 }
-.tree-names { display: flex; flex-direction: column; flex: 1; }
+.tree-names { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .tree-names small { color: var(--ink-soft); }
+.subline { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.subline .zone-chip { color: var(--green); }
+.row-icons { display: flex; align-items: center; gap: 9px; flex-shrink: 0; color: var(--ink-soft); }
+.row-icons .icon { width: 17px; height: 17px; display: block; }
+.icon.tone-warn { color: var(--amber); }
+.icon.tone-cold { color: #5c86b0; }
 .tag {
   font-family: var(--display); font-weight: 700; color: var(--green);
   background: var(--green-soft); border-radius: 8px; padding: 4px 9px; min-width: 34px; text-align: center;

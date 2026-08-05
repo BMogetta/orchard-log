@@ -220,11 +220,30 @@ describe("needs-attention list", () => {
     fireEvent.click(within(panel).getByText("Water check"));
     expect(await screen.findByText("Clinical history")).toBeInTheDocument();
   });
+
+  it("flags an overdue tree with an at-a-glance badge in its list row", async () => {
+    await trees.save({
+      ...blankTree(),
+      commonName: "Quince",
+      careSchedule: [
+        {
+          task: "Water",
+          intervalDays: 7,
+          intervalDaysSummer: null,
+          intervalDaysWinter: null,
+          lastDone: null,
+        },
+      ],
+    });
+    renderApp();
+    // The ⚠️ icon carries the attention title; the panel heading is plain text.
+    expect(await screen.findByTitle("Needs attention")).toBeInTheDocument();
+  });
 });
 
 describe("tree list controls", () => {
   const rowNames = (container) =>
-    [...container.querySelectorAll(".tree-row strong")].map((el) => el.textContent);
+    [...container.querySelectorAll(".tree-card strong")].map((el) => el.textContent);
 
   it("filters the list by the search box", async () => {
     await trees.save({ ...blankTree(), commonName: "Meyer Lemon" });

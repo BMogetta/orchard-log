@@ -1,8 +1,38 @@
 import React, { useState } from "react";
-import { trees, zones, useLive } from "../data";
+import { trees, zones, useLive, estimatedAgeMonths } from "../data";
+import { computeAttention } from "../lib/attention.js";
+import { Icon, WaterIcon } from "./icons.jsx";
+import { TreeIcon } from "./TreeIcon.jsx";
 import { useT } from "../lib/i18n.jsx";
 
 const norm = (s) => (s || "").toLowerCase().trim();
+
+// At-a-glance icons for the list row (rendered only when the data is present).
+const SUN_ICON = {
+  "full-sun": "sun",
+  "part-sun": "cloud-sun",
+  "part-shade": "cloud",
+  "full-shade": "cloudy",
+};
+// Map our stored slugs to the composable TreeIcon glyph (foliage + pollination).
+const FOLIAGE = {
+  deciduous: "deciduous",
+  evergreen: "evergreen",
+  "semi-deciduous": "semiDeciduous",
+};
+const POLLINATION = {
+  self: "selfFertile",
+  "partial-self": "partiallySelfFertile",
+  "needs-partner": "needsPartner",
+};
+
+// Compact age: the dominant unit only (e.g. "4a" / "8m"), or null if unknown.
+function ageLabel(tree, t) {
+  const m = estimatedAgeMonths(tree);
+  if (m == null) return null;
+  const y = Math.floor(m / 12);
+  return y >= 1 ? t("treeDetail.ageYear", { n: y }) : t("treeDetail.ageMonth", { n: m });
+}
 
 // Sort comparators, keyed by the <select> value. Name falls back to label so
 // unnamed trees still order sensibly; newest reads the stored createdAt stamp.
@@ -14,23 +44,68 @@ const SORTERS = {
   newest: (a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""),
 };
 
-function TreeRow({ tree, onOpen }) {
+function TreeCard({ tree, onOpen, attn }) {
   const { t } = useT();
+  // Observed reality wins over the reference spec, matching the app's ethos.
+  const sun = tree.observedSun !== "unknown" ? tree.observedSun : tree.sunSpec;
+  const water = tree.observedWater !== "unknown" ? tree.observedWater : tree.waterSpec;
+  const age = ageLabel(tree, t);
+  const meta = [tree.variety, tree.scientificName].filter(Boolean);
+
+  // The composable tree glyph carries foliage + pollination + a frost badge.
+  // Sun and water read as their own icons in the card header, so they aren't
+  // folded into the glyph. Rendered only when the foliage is known.
+  const foliage = FOLIAGE[tree.deciduous];
+  const pollination = POLLINATION[tree.pollination];
+  const badge = tree.minTempC != null && tree.minTempC >= 0 ? "frostSensitive" : undefined;
+  const glyphTitle = [
+    t(`deciduous.${tree.deciduous}`),
+    pollination && t(`pollination.${tree.pollination}`),
+    badge === "frostSensitive" && t("treeList.frostTender"),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <li>
-      <button className="tree-row" onClick={() => onOpen(tree.id)}>
+    <button className="tree-card" onClick={() => onOpen(tree.id)}>
+      <div className="card-head">
         <span className="tag">{tree.label || t("common.dash")}</span>
-        <span className="tree-names">
-          <strong>{tree.commonName || t("treeList.unnamed")}</strong>
-          <small>{[tree.variety, tree.scientificName].filter(Boolean).join(" · ")}</small>
+        <span className="row-icons">
+          {attn && (
+            <Icon name="triangle-alert" title={t("attention.title")} className="tone-warn" />
+          )}
+          {sun && sun !== "unknown" && <Icon name={SUN_ICON[sun]} title={t(`sun.${sun}`)} />}
+          {water && water !== "unknown" && (
+            <WaterIcon level={water} title={t(`water.${water}`)} />
+          )}
         </span>
-        {tree.pollination === "needs-partner" && (
-          <span className="chip warn" title={t("treeList.needsPartner")}>
-            ⚥
-          </span>
-        )}
-      </button>
-    </li>
+      </div>
+
+      {foliage ? (
+        <TreeIcon
+          foliage={foliage}
+          pollination={pollination}
+          badge={badge}
+          size={56}
+          title={glyphTitle}
+          className="card-glyph"
+        />
+      ) : (
+        <span className="card-glyph placeholder" aria-hidden="true" />
+      )}
+
+      <div className="card-body">
+        <strong>{tree.commonName || t("treeList.unnamed")}</strong>
+        {meta.length > 0 && <small className="card-sub">{meta.join(" · ")}</small>}
+        <small className="subline">
+          {age && <span className="meta-chip">{age}</span>}
+          {tree.potLiters != null && <span className="meta-chip">{tree.potLiters}L</span>}
+          {tree.positionOnTerrace && (
+            <span className="zone-chip">📍 {tree.positionOnTerrace}</span>
+          )}
+        </small>
+      </div>
+    </button>
   );
 }
 
@@ -38,6 +113,8 @@ export default function TreeList({ onOpen, onNew }) {
   const { t } = useT();
   const list = useLive(() => trees.all(), []);
   const zoneList = useLive(() => zones.list(), []) || [];
+  const attnItems = useLive(() => computeAttention(), []) || [];
+  const needsAttention = new Set(attnItems.map((a) => a.treeId));
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("label");
@@ -155,19 +232,19 @@ export default function TreeList({ onOpen, onNew }) {
         ? groups.map((g) => (
             <div className="group" key={g.key}>
               <h3 className="group-head">{g.name}</h3>
-              <ul className="tree-list">
+              <div className="tree-cards">
                 {g.items.map((tree) => (
-                  <TreeRow key={tree.id} tree={tree} onOpen={onOpen} />
+                  <TreeCard key={tree.id} tree={tree} onOpen={onOpen} attn={needsAttention.has(tree.id)} />
                 ))}
-              </ul>
+              </div>
             </div>
           ))
         : visible.length > 0 && (
-            <ul className="tree-list">
+            <div className="tree-cards">
               {visible.map((tree) => (
-                <TreeRow key={tree.id} tree={tree} onOpen={onOpen} />
+                <TreeCard key={tree.id} tree={tree} onOpen={onOpen} attn={needsAttention.has(tree.id)} />
               ))}
-            </ul>
+            </div>
           )}
     </section>
   );
