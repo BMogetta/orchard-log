@@ -11,6 +11,7 @@ import {
   DECIDUOUS_VALUES,
   SOIL_PH_VALUES,
   GROWTH_RATE_VALUES,
+  CHILL_REQ_VALUES,
   WIND_TOLERANCE_VALUES,
   POLLINATION_VALUES,
 } from "../data";
@@ -55,6 +56,14 @@ export default function TreeForm({ id, onBack, onSaved }) {
       // shows in the form (and is cleaned up on save) instead of an empty field.
       if (tr.chillHoursMinSpec == null && tr.chillHoursSpec != null) {
         tr = { ...tr, chillHoursMinSpec: tr.chillHoursSpec, chillHoursSpec: null };
+      }
+      // A record with a range but no requirement flag predates the toggle —
+      // treat it as "requires chill" so the range stays visible.
+      if (
+        (tr.chillHoursRequired == null || tr.chillHoursRequired === "unknown") &&
+        (tr.chillHoursMinSpec != null || tr.chillHoursMaxSpec != null)
+      ) {
+        tr = { ...tr, chillHoursRequired: "yes" };
       }
       setTree(tr);
     });
@@ -256,22 +265,32 @@ export default function TreeForm({ id, onBack, onSaved }) {
           />
         </Field>
         <Field label={t("treeForm.chillHours")} hint={t("treeForm.chillHoursHint")}>
-          <div className="range-row">
-            <input
-              type="number"
-              placeholder={t("common.min")}
-              value={tree.chillHoursMinSpec ?? ""}
-              onChange={(e) => set({ chillHoursMinSpec: num(e.target.value) })}
-            />
-            <span className="range-sep">–</span>
-            <input
-              type="number"
-              placeholder={t("common.max")}
-              value={tree.chillHoursMaxSpec ?? ""}
-              onChange={(e) => set({ chillHoursMaxSpec: num(e.target.value) })}
-            />
-          </div>
+          <EnumSelect
+            prefix="chillReq"
+            values={CHILL_REQ_VALUES}
+            value={tree.chillHoursRequired}
+            onChange={(v) => set({ chillHoursRequired: v })}
+          />
         </Field>
+        {tree.chillHoursRequired === "yes" && (
+          <Field label={t("treeForm.chillHoursRange")}>
+            <div className="range-row">
+              <input
+                type="number"
+                placeholder={t("common.min")}
+                value={tree.chillHoursMinSpec ?? ""}
+                onChange={(e) => set({ chillHoursMinSpec: num(e.target.value) })}
+              />
+              <span className="range-sep">–</span>
+              <input
+                type="number"
+                placeholder={t("common.max")}
+                value={tree.chillHoursMaxSpec ?? ""}
+                onChange={(e) => set({ chillHoursMaxSpec: num(e.target.value) })}
+              />
+            </div>
+          </Field>
+        )}
         <Field label={t("treeForm.deciduous")}>
           <EnumSelect
             prefix="deciduous"

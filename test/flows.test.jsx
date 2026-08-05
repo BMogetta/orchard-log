@@ -82,18 +82,32 @@ describe("tree lifecycle", () => {
     expect(await screen.findByText("Meyer Lemon")).toBeInTheDocument();
   });
 
-  it("records chill hours as a min–max range", async () => {
+  it("records chill hours as a min–max range when required", async () => {
     renderApp();
     fireEvent.click(await screen.findByText("Add tree"));
     fireEvent.change(await screen.findByLabelText("Common name"), {
       target: { value: "Peach" },
     });
+    // The hour range only appears once chill is marked as required.
+    fireEvent.change(screen.getByLabelText(/Chill hours needed/), { target: { value: "yes" } });
     fireEvent.change(screen.getByPlaceholderText("min"), { target: { value: "300" } });
     fireEvent.change(screen.getByPlaceholderText("max"), { target: { value: "1000" } });
     fireEvent.click(screen.getByText("Save tree"));
 
     expect(await screen.findByRole("heading", { name: "Peach" })).toBeInTheDocument();
     expect(screen.getByText("300–1000")).toBeInTheDocument();
+  });
+
+  it("shows 'No' for chill hours when not required", async () => {
+    renderApp();
+    fireEvent.click(await screen.findByText("Add tree"));
+    fireEvent.change(await screen.findByLabelText("Common name"), { target: { value: "Lime" } });
+    fireEvent.change(screen.getByLabelText(/Chill hours needed/), { target: { value: "no" } });
+    fireEvent.click(screen.getByText("Save tree"));
+
+    expect(await screen.findByRole("heading", { name: "Lime" })).toBeInTheDocument();
+    const line = screen.getByText("Chill hours").closest(".line");
+    expect(within(line).getByText("No")).toBeInTheDocument();
   });
 
   it("records a partially self-fertile pollination", async () => {

@@ -27,7 +27,18 @@ export const FERTILIZER_TYPE_VALUES = [
 ];
 export const DECIDUOUS_VALUES = ["unknown", "deciduous", "evergreen", "semi-deciduous"];
 export const SOIL_PH_VALUES = ["unknown", "acidic", "slightly-acidic", "neutral", "alkaline"];
-export const GROWTH_RATE_VALUES = ["unknown", "slow", "medium", "fast"];
+export const GROWTH_RATE_VALUES = [
+  "unknown",
+  "slow",
+  "slow-medium",
+  "medium",
+  "medium-fast",
+  "fast",
+];
+
+// Whether the tree needs winter chill to flower. "yes" reveals the hour range;
+// "no" reads as "No" in the detail; "unknown" hides it.
+export const CHILL_REQ_VALUES = ["unknown", "yes", "no"];
 export const WIND_TOLERANCE_VALUES = ["unknown", "low", "medium", "high"];
 export const POLLINATION_VALUES = ["unknown", "self", "partial-self", "needs-partner"];
 
@@ -73,6 +84,7 @@ export function blankTree() {
     waterSpec: "unknown",
     minTempC: null, // cold hardiness floor
     maxTempC: null, // heat tolerance ceiling
+    chillHoursRequired: "unknown", // "yes" -> range applies, "no" -> shows "No"
     chillHoursMinSpec: null, // hours < ~7C required for flowering; a min–max range
     chillHoursMaxSpec: null,
     deciduous: "unknown", // deciduous | evergreen | semi-deciduous

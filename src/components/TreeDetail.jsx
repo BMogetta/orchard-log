@@ -173,16 +173,25 @@ export default function TreeDetail({ id, onBack, onEdit }) {
         })
       : null;
 
-  // Chill hours: a min–max range, tolerant of legacy single-value docs.
+  // Chill hours: "No" when not required; otherwise the min–max range (tolerant
+  // of legacy single-value docs), or "Sí" when required but the amount is unknown.
   const chillMin = tree.chillHoursMinSpec ?? tree.chillHoursSpec ?? null;
   const chillMax = tree.chillHoursMaxSpec ?? null;
-  const chillHours =
+  const chillRange =
     chillMin != null && chillMax != null
       ? `${chillMin}–${chillMax}`
       : chillMin != null
         ? String(chillMin)
         : chillMax != null
           ? String(chillMax)
+          : null;
+  const chillHours =
+    tree.chillHoursRequired === "no"
+      ? t("common.no")
+      : chillRange != null
+        ? chillRange
+        : tree.chillHoursRequired === "yes"
+          ? t("common.yes")
           : null;
 
   const metaBits = [ageLabel(estimatedAgeMonths(tree))];

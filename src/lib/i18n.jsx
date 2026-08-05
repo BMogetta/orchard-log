@@ -33,6 +33,8 @@ const dict = {
     "common.remove": "Quitar",
     "common.close": "Cerrar",
     "common.dash": "—",
+    "common.yes": "Sí",
+    "common.no": "No",
     "common.min": "mín",
     "common.max": "máx",
     "common.days.short": "d",
@@ -173,6 +175,7 @@ const dict = {
     "treeForm.minTemp": "Temperatura mínima (°C)",
     "treeForm.maxTemp": "Temperatura máxima (°C)",
     "treeForm.chillHours": "Horas de frío requeridas",
+    "treeForm.chillHoursRange": "Rango de horas",
     "treeForm.chillHoursHint": "Horas bajo ~7°C necesarias para florecer. Frutales de carozo 300-1000; cítricos 0.",
     "treeForm.deciduous": "Caducifolio / perenne",
     "treeForm.matureHeight": "Altura adulta (m)",
@@ -250,8 +253,14 @@ const dict = {
 
     "growthRate.unknown": "Desconocido",
     "growthRate.slow": "Lento",
+    "growthRate.slow-medium": "Lento-medio",
     "growthRate.medium": "Medio",
+    "growthRate.medium-fast": "Medio-rápido",
     "growthRate.fast": "Rápido",
+
+    "chillReq.unknown": "Desconocido",
+    "chillReq.yes": "Requiere",
+    "chillReq.no": "No requiere",
 
     "windTolerance.unknown": "Desconocido",
     "windTolerance.low": "Baja",
@@ -292,6 +301,8 @@ const dict = {
     "common.remove": "Remove",
     "common.close": "Close",
     "common.dash": "—",
+    "common.yes": "Yes",
+    "common.no": "No",
     "common.min": "min",
     "common.max": "max",
     "common.days.short": "d",
@@ -432,6 +443,7 @@ const dict = {
     "treeForm.minTemp": "Min temperature (°C)",
     "treeForm.maxTemp": "Max temperature (°C)",
     "treeForm.chillHours": "Chill hours needed",
+    "treeForm.chillHoursRange": "Hour range",
     "treeForm.chillHoursHint": "Hours under ~7°C required for flowering. Stone fruit 300-1000; citrus 0.",
     "treeForm.deciduous": "Deciduous / evergreen",
     "treeForm.matureHeight": "Mature height (m)",
@@ -509,8 +521,14 @@ const dict = {
 
     "growthRate.unknown": "Unknown",
     "growthRate.slow": "Slow",
+    "growthRate.slow-medium": "Slow-medium",
     "growthRate.medium": "Medium",
+    "growthRate.medium-fast": "Medium-fast",
     "growthRate.fast": "Fast",
+
+    "chillReq.unknown": "Unknown",
+    "chillReq.yes": "Required",
+    "chillReq.no": "Not required",
 
     "windTolerance.unknown": "Unknown",
     "windTolerance.low": "Low",
