@@ -150,6 +150,9 @@ const dict = {
     "treeForm.label": "Etiqueta de maceta",
     "treeForm.labelHint": "Lo que escribís en la maceta, p.ej. 07",
     "treeForm.commonName": "Nombre común",
+    "treeForm.otherNames": "Otros nombres comunes",
+    "treeForm.otherNamesHint": "Sinónimos — no se muestran en la lista, pero se buscan.",
+    "treeForm.addName": "+ Agregar nombre",
     "treeForm.scientificName": "Nombre científico",
     "treeForm.variety": "Variedad / cultivar",
 
@@ -240,7 +243,8 @@ const dict = {
     "deciduous.semi-deciduous": "Semicaducifolio",
 
     "soilPh.unknown": "Desconocido",
-    "soilPh.acidic": "Ácido (<6.5)",
+    "soilPh.acidic": "Ácido (<5.5)",
+    "soilPh.slightly-acidic": "Semi ácido (5.5-6.5)",
     "soilPh.neutral": "Neutro (6.5-7.5)",
     "soilPh.alkaline": "Alcalino (>7.5)",
 
@@ -405,6 +409,9 @@ const dict = {
     "treeForm.label": "Pot label",
     "treeForm.labelHint": "What you write on the pot, e.g. 07",
     "treeForm.commonName": "Common name",
+    "treeForm.otherNames": "Other common names",
+    "treeForm.otherNamesHint": "Synonyms — hidden in the list, but searchable.",
+    "treeForm.addName": "+ Add name",
     "treeForm.scientificName": "Scientific name",
     "treeForm.variety": "Variety / cultivar",
 
@@ -495,7 +502,8 @@ const dict = {
     "deciduous.semi-deciduous": "Semi-deciduous",
 
     "soilPh.unknown": "Unknown",
-    "soilPh.acidic": "Acidic (<6.5)",
+    "soilPh.acidic": "Acidic (<5.5)",
+    "soilPh.slightly-acidic": "Slightly acidic (5.5-6.5)",
     "soilPh.neutral": "Neutral (6.5-7.5)",
     "soilPh.alkaline": "Alkaline (>7.5)",
 

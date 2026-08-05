@@ -136,8 +136,8 @@ export default function TreeList({ onOpen, onNew }) {
     .filter((tr) =>
       !q
         ? true
-        : [tr.label, tr.commonName, tr.scientificName, tr.variety].some((v) =>
-            norm(v).includes(q)
+        : [tr.label, tr.commonName, tr.scientificName, tr.variety, ...(tr.otherNames || [])].some(
+            (v) => norm(v).includes(q)
           )
     )
     .filter(inZoneFilter)

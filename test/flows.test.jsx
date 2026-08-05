@@ -261,6 +261,20 @@ describe("tree list controls", () => {
     expect(screen.queryByText("Kumquat")).toBeNull();
   });
 
+  it("finds a tree by one of its other common names (synonyms)", async () => {
+    await trees.save({ ...blankTree(), commonName: "Guayabo", otherNames: ["Guava", "Psidium"] });
+    await trees.save({ ...blankTree(), commonName: "Higo" });
+    renderApp();
+    await screen.findByText("Higo");
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by name/), {
+      target: { value: "psidium" },
+    });
+
+    expect(screen.getByText("Guayabo")).toBeInTheDocument();
+    expect(screen.queryByText("Higo")).toBeNull();
+  });
+
   it("filters to only trees needing a pollination partner", async () => {
     await trees.save({ ...blankTree(), commonName: "Apple", pollination: "needs-partner" });
     await trees.save({ ...blankTree(), commonName: "Peach", pollination: "self" });

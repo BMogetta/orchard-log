@@ -26,7 +26,7 @@ export const FERTILIZER_TYPE_VALUES = [
   "other",
 ];
 export const DECIDUOUS_VALUES = ["unknown", "deciduous", "evergreen", "semi-deciduous"];
-export const SOIL_PH_VALUES = ["unknown", "acidic", "neutral", "alkaline"];
+export const SOIL_PH_VALUES = ["unknown", "acidic", "slightly-acidic", "neutral", "alkaline"];
 export const GROWTH_RATE_VALUES = ["unknown", "slow", "medium", "fast"];
 export const WIND_TOLERANCE_VALUES = ["unknown", "low", "medium", "high"];
 export const POLLINATION_VALUES = ["unknown", "self", "partial-self", "needs-partner"];
@@ -52,6 +52,7 @@ export function blankTree() {
     // --- Identity ---
     label: "", // short id you write on the pot, e.g. "07"
     commonName: "",
+    otherNames: [], // synonyms / alternate common names — searchable, not shown
     scientificName: "",
     variety: "", // cultivar, e.g. 'Valencia'
 

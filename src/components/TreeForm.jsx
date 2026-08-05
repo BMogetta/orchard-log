@@ -89,8 +89,23 @@ export default function TreeForm({ id, onBack, onSaved }) {
     set({ careSchedule: tree.careSchedule.filter((_, j) => j !== i) });
   }
 
+  // --- other common names (synonyms) ---
+  function updateName(i, value) {
+    const next = (tree.otherNames || []).slice();
+    next[i] = value;
+    set({ otherNames: next });
+  }
+  function addName() {
+    set({ otherNames: [...(tree.otherNames || []), ""] });
+  }
+  function removeName(i) {
+    set({ otherNames: (tree.otherNames || []).filter((_, j) => j !== i) });
+  }
+
   async function submit() {
-    const savedId = await trees.save(tree);
+    // Drop blank/whitespace-only synonyms so they don't clutter search.
+    const otherNames = (tree.otherNames || []).map((n) => n.trim()).filter(Boolean);
+    const savedId = await trees.save({ ...tree, otherNames });
     onSaved(id ?? savedId);
   }
 
@@ -119,6 +134,23 @@ export default function TreeForm({ id, onBack, onSaved }) {
             onChange={(e) => set({ commonName: e.target.value })}
           />
         </Field>
+        {/* Not a <Field> (a <label>): it holds buttons, which a wrapping label
+            would hijack. Synonyms are searchable but never displayed. */}
+        <div className="field">
+          <span className="field-label">{t("treeForm.otherNames")}</span>
+          {(tree.otherNames || []).map((name, i) => (
+            <div className="name-row" key={i}>
+              <input value={name} onChange={(e) => updateName(i, e.target.value)} />
+              <button className="link danger" onClick={() => removeName(i)}>
+                {t("common.remove")}
+              </button>
+            </div>
+          ))}
+          <button className="ghost" onClick={addName}>
+            {t("treeForm.addName")}
+          </button>
+          <span className="field-hint">{t("treeForm.otherNamesHint")}</span>
+        </div>
         <Field label={t("treeForm.scientificName")}>
           <input
             value={tree.scientificName}
