@@ -87,20 +87,33 @@ button { font-family: var(--body); font-size: 15px; }
 .tree-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 
 /* Card grid — gives the composable tree glyph room to read */
-.tree-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; }
+.tree-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 12px; }
 .tree-card {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   width: 100%; text-align: center; cursor: pointer; font: inherit; color: inherit;
   background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 12px 12px 14px;
+  padding: 12px 12px 12px;
 }
-.card-head { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; min-height: 26px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; min-height: 24px; }
+/* Fixed-slot condition row: alert · frost · water · sun */
+.card-conds { display: grid; grid-template-columns: repeat(4, 16px); gap: 5px; align-items: center; }
+.card-conds .cslot { width: 16px; height: 16px; display: grid; place-items: center; color: var(--ink-soft); }
+.card-conds .icon { width: 16px; height: 16px; }
 .card-glyph { margin: 2px 0; }
 .card-glyph.placeholder { width: 56px; height: 56px; border: 2px dashed var(--line); border-radius: 50%; }
 .card-body { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .card-body strong { font-size: 15px; line-height: 1.2; }
 .card-sub { color: var(--ink-soft); font-style: italic; }
-.tree-card .subline { justify-content: center; }
+/* Fixed-slot footer: location (flex) · size · age. Size and age get fixed-width
+   columns so they hold position even when the neighbouring value is empty. */
+.card-foot {
+  display: grid; grid-template-columns: minmax(0, 1fr) 3.4em 2.8em; gap: 8px;
+  align-items: baseline; width: 100%; margin-top: 4px; font-size: 13px; color: var(--ink-soft);
+}
+.card-foot .fslot { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-foot .zone { text-align: left; }
+.card-foot .size, .card-foot .age { text-align: right; }
+.card-foot .pin { color: var(--danger); }
 .tree-row {
   width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
   background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius);

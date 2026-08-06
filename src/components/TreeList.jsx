@@ -52,16 +52,14 @@ function TreeCard({ tree, onOpen, attn }) {
   const age = ageLabel(tree, t);
   const meta = [tree.variety, tree.scientificName].filter(Boolean);
 
-  // The composable tree glyph carries foliage + pollination + a frost badge.
-  // Sun and water read as their own icons in the card header, so they aren't
-  // folded into the glyph. Rendered only when the foliage is known.
+  // The glyph carries only foliage + pollination; sun, water, frost and the
+  // overdue-care alert read as their own fixed-slot icons in the card header.
   const foliage = FOLIAGE[tree.deciduous];
   const pollination = POLLINATION[tree.pollination];
-  const badge = tree.minTempC != null && tree.minTempC >= 0 ? "frostSensitive" : undefined;
+  const frost = tree.minTempC != null && tree.minTempC >= 0;
   const glyphTitle = [
     t(`deciduous.${tree.deciduous}`),
     pollination && t(`pollination.${tree.pollination}`),
-    badge === "frostSensitive" && t("treeList.frostTender"),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -70,22 +68,33 @@ function TreeCard({ tree, onOpen, attn }) {
     <button className="tree-card" onClick={() => onOpen(tree.id)}>
       <div className="card-head">
         <span className="tag">{tree.label || t("common.dash")}</span>
-        <span className="row-icons">
-          {attn && (
-            <Icon name="triangle-alert" title={t("attention.title")} className="tone-warn" />
-          )}
-          {sun && sun !== "unknown" && <Icon name={SUN_ICON[sun]} title={t(`sun.${sun}`)} />}
-          {water && water !== "unknown" && (
-            <WaterIcon level={water} title={t(`water.${water}`)} />
-          )}
-        </span>
+        {/* Fixed slots so each condition keeps its position: alert · frost · water · sun */}
+        <div className="card-conds">
+          <span className="cslot">
+            {attn && (
+              <Icon name="triangle-alert" title={t("attention.title")} className="tone-warn" />
+            )}
+          </span>
+          <span className="cslot">
+            {frost && (
+              <Icon name="snowflake" title={t("treeList.frostTender")} className="tone-cold" />
+            )}
+          </span>
+          <span className="cslot">
+            {water && water !== "unknown" && (
+              <WaterIcon level={water} title={t(`water.${water}`)} />
+            )}
+          </span>
+          <span className="cslot">
+            {sun && sun !== "unknown" && <Icon name={SUN_ICON[sun]} title={t(`sun.${sun}`)} />}
+          </span>
+        </div>
       </div>
 
       {foliage ? (
         <TreeIcon
           foliage={foliage}
           pollination={pollination}
-          badge={badge}
           size={56}
           title={glyphTitle}
           className="card-glyph"
@@ -97,13 +106,19 @@ function TreeCard({ tree, onOpen, attn }) {
       <div className="card-body">
         <strong>{tree.commonName || t("treeList.unnamed")}</strong>
         {meta.length > 0 && <small className="card-sub">{meta.join(" · ")}</small>}
-        <small className="subline">
-          {age && <span className="meta-chip">{age}</span>}
-          {tree.potLiters != null && <span className="meta-chip">{tree.potLiters}L</span>}
+      </div>
+
+      {/* Fixed slots so location / size / age never shift position. */}
+      <div className="card-foot">
+        <span className="fslot zone">
           {tree.positionOnTerrace && (
-            <span className="zone-chip">📍 {tree.positionOnTerrace}</span>
+            <>
+              <span className="pin">📍</span> {tree.positionOnTerrace}
+            </>
           )}
-        </small>
+        </span>
+        <span className="fslot size">{tree.potLiters != null ? `${tree.potLiters}L` : ""}</span>
+        <span className="fslot age">{age || ""}</span>
       </div>
     </button>
   );
