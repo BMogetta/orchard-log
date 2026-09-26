@@ -118,6 +118,18 @@ const PATHS = {
       <path d="M22 9c-4.29 0-7.14-2.33-10-7 5.71 0 10 4.67 10 7Z" />
     </>
   ),
+  // harvest quick-log (a basket = gathering fruit)
+  "shopping-basket": (
+    <>
+      <path d="m15 11-1 9" />
+      <path d="m19 11-4-7" />
+      <path d="M2 11h20" />
+      <path d="m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4" />
+      <path d="M4.5 15.5h15" />
+      <path d="m5 11 4-7" />
+      <path d="m9 11 1 9" />
+    </>
+  ),
 };
 
 // A droplet that fills with the watering level, so the four WATER_VALUES read

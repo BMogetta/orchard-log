@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { trees, zones, useLive, estimatedAgeMonths } from "../data";
 import { computeAttention } from "../lib/attention.js";
+import { computePhenology } from "../lib/phenology.js";
 import { Icon, WaterIcon } from "./icons.jsx";
 import { TreeIcon } from "./TreeIcon.jsx";
 import { useT } from "../lib/i18n.jsx";
@@ -44,7 +45,14 @@ const SORTERS = {
   newest: (a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""),
 };
 
-function TreeCard({ tree, onOpen, attn }) {
+// Phenophase -> the vendored line icon + its tone class per state.
+const PHENO_ICON = { flowering: "flower", fruiting: "cherry" };
+const PHENO_TONE = {
+  flowering: { active: "tone-bloom", predicted: "pheno-faint" },
+  fruiting: { active: "tone-fruit", predicted: "pheno-faint" },
+};
+
+function TreeCard({ tree, onOpen, attn, pheno }) {
   const { t } = useT();
   // Observed reality wins over the reference spec, matching the app's ethos.
   const sun = tree.observedSun !== "unknown" ? tree.observedSun : tree.sunSpec;
@@ -68,7 +76,8 @@ function TreeCard({ tree, onOpen, attn }) {
     <button className="tree-card" onClick={() => onOpen(tree.id)}>
       <div className="card-head">
         <span className="tag">{tree.label || t("common.dash")}</span>
-        {/* Fixed slots so each condition keeps its position: alert · frost · water · sun */}
+        {/* Fixed slots so each condition keeps its position:
+            alert · frost · water · sun · flower · fruit */}
         <div className="card-conds">
           <span className="cslot">
             {attn && (
@@ -88,6 +97,20 @@ function TreeCard({ tree, onOpen, attn }) {
           <span className="cslot">
             {sun && sun !== "unknown" && <Icon name={SUN_ICON[sun]} title={t(`sun.${sun}`)} />}
           </span>
+          {["flowering", "fruiting"].map((phase) => {
+            const state = pheno?.[phase];
+            return (
+              <span className="cslot" key={phase}>
+                {state && state !== "none" && (
+                  <Icon
+                    name={PHENO_ICON[phase]}
+                    title={t(`pheno.${phase}.${state}`)}
+                    className={PHENO_TONE[phase][state]}
+                  />
+                )}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -130,6 +153,7 @@ export default function TreeList({ onOpen, onNew }) {
   const zoneList = useLive(() => zones.list(), []) || [];
   const attnItems = useLive(() => computeAttention(), []) || [];
   const needsAttention = new Set(attnItems.map((a) => a.treeId));
+  const phenology = useLive(() => computePhenology(), []) || new Map();
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("label");
@@ -249,7 +273,13 @@ export default function TreeList({ onOpen, onNew }) {
               <h3 className="group-head">{g.name}</h3>
               <div className="tree-cards">
                 {g.items.map((tree) => (
-                  <TreeCard key={tree.id} tree={tree} onOpen={onOpen} attn={needsAttention.has(tree.id)} />
+                  <TreeCard
+                    key={tree.id}
+                    tree={tree}
+                    onOpen={onOpen}
+                    attn={needsAttention.has(tree.id)}
+                    pheno={phenology.get(tree.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -257,7 +287,13 @@ export default function TreeList({ onOpen, onNew }) {
         : visible.length > 0 && (
             <div className="tree-cards">
               {visible.map((tree) => (
-                <TreeCard key={tree.id} tree={tree} onOpen={onOpen} attn={needsAttention.has(tree.id)} />
+                <TreeCard
+                  key={tree.id}
+                  tree={tree}
+                  onOpen={onOpen}
+                  attn={needsAttention.has(tree.id)}
+                  pheno={phenology.get(tree.id)}
+                />
               ))}
             </div>
           )}

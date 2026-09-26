@@ -3,6 +3,7 @@ import { trees, events, photos, estimatedAgeMonths, EVENT_TYPES, useLive } from 
 import { downscaleImage } from "../lib/image.js";
 import { downloadCareTaskIcs } from "../lib/ics.js";
 import { harvestTotals } from "../lib/harvest.js";
+import { Icon } from "./icons.jsx";
 import { useT } from "../lib/i18n.jsx";
 
 const num = (v) => (v === "" || v == null ? null : Number(v));
@@ -93,6 +94,19 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   async function logEvent() {
     await events.add({ treeId: id, ...eventFromDraft(draft) });
     setDraft({ type: "note", notes: "", date: today(), yieldAmount: "", yieldUnit: "" });
+  }
+
+  // One-tap phenology: log a flowering / fruit-set observation dated today. This
+  // is the same timeline event the form would create, so it feeds lib/phenology.
+  async function quickLog(type) {
+    await events.add({
+      treeId: id,
+      type,
+      date: today(),
+      notes: "",
+      yieldAmount: null,
+      yieldUnit: "",
+    });
   }
 
   function startEdit(ev) {
@@ -399,6 +413,17 @@ export default function TreeDetail({ id, onBack, onEdit }) {
 
       <div className="log">
         <h3>{t("treeDetail.clinicalHistory")}</h3>
+        <div className="quick-log">
+          <button className="ghost sm" onClick={() => quickLog("flowering")}>
+            <Icon name="flower" className="tone-bloom" /> {t("treeDetail.observedFlower")}
+          </button>
+          <button className="ghost sm" onClick={() => quickLog("fruit-set")}>
+            <Icon name="cherry" className="tone-fruit" /> {t("treeDetail.observedFruit")}
+          </button>
+          <button className="ghost sm" onClick={() => quickLog("harvest")}>
+            <Icon name="shopping-basket" className="tone-harvest" /> {t("treeDetail.observedHarvest")}
+          </button>
+        </div>
         <div className="log-form">
           <select
             value={draft.type}

@@ -96,7 +96,7 @@ button { font-family: var(--body); font-size: 15px; }
 }
 .card-head { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px; min-height: 24px; }
 /* Fixed-slot condition row: alert · frost · water · sun */
-.card-conds { display: grid; grid-template-columns: repeat(4, 16px); gap: 5px; align-items: center; }
+.card-conds { display: grid; grid-template-columns: repeat(6, 16px); gap: 5px; align-items: center; }
 .card-conds .cslot { width: 16px; height: 16px; display: grid; place-items: center; color: var(--ink-soft); }
 .card-conds .icon { width: 16px; height: 16px; }
 .card-glyph { margin: 2px 0; }
@@ -127,6 +127,12 @@ button { font-family: var(--body); font-size: 15px; }
 .row-icons .icon { width: 17px; height: 17px; display: block; }
 .icon.tone-warn { color: var(--amber); }
 .icon.tone-cold { color: #5c86b0; }
+/* Phenology: "active" (happening now) reads in full colour; "predicted"
+   (expected around now, from prior years) is the same glyph muted. */
+.icon.tone-bloom { color: #c86b98; }
+.icon.tone-fruit { color: #c0453b; }
+.icon.tone-harvest { color: #7a8b3a; }
+.icon.pheno-faint { color: var(--ink-soft); opacity: 0.45; }
 .tag {
   font-family: var(--display); font-weight: 700; color: var(--green);
   background: var(--green-soft); border-radius: 8px; padding: 4px 9px; min-width: 34px; text-align: center;
@@ -165,6 +171,9 @@ button { font-family: var(--body); font-size: 15px; }
 .file-btn { display: inline-flex; align-items: center; }
 
 /* Log / timeline */
+.quick-log { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.quick-log .ghost { display: inline-flex; align-items: center; gap: 6px; }
+.quick-log .icon { width: 16px; height: 16px; }
 .log-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .log-form input[placeholder="Notes"] { grid-column: 1 / -1; }
 .log-form .primary { grid-column: 1 / -1; }
