@@ -255,6 +255,9 @@ export default function TreeDetail({ id, onBack, onEdit }) {
       <div className="compare">
         <div className="compare-col spec">
           <h3>{t("treeDetail.specTitle")}</h3>
+          {tree.referenceNotes && (
+            <p className="notes reference-notes">{tree.referenceNotes}</p>
+          )}
           <Line k={t("treeDetail.sun")} v={enumLabel("sun", tree.sunSpec)} />
           <Line k={t("treeDetail.water")} v={enumLabel("water", tree.waterSpec)} />
           <Line k={t("treeDetail.minTemp")} v={tree.minTempC} />

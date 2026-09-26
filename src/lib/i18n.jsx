@@ -153,6 +153,8 @@ const dict = {
     "treeForm.fieldset.provenance": "Procedencia",
     "treeForm.fieldset.physical": "Físico",
     "treeForm.fieldset.spec": "Referencia — lo que dicen los libros",
+    "treeForm.referenceNotes": "Ficha de la especie",
+    "treeForm.referenceNotesHint": "Prosa general de referencia: origen, distribución, altitud, lluvia, suelo, raíz…",
     "treeForm.fieldset.observed": "Observado — lo que hace TU árbol acá",
     "treeForm.fieldset.care": "Cuidados recurrentes",
 
@@ -428,6 +430,8 @@ const dict = {
     "treeForm.fieldset.provenance": "Provenance",
     "treeForm.fieldset.physical": "Physical",
     "treeForm.fieldset.spec": "Spec — what references say",
+    "treeForm.referenceNotes": "Species notes",
+    "treeForm.referenceNotesHint": "General reference prose: origin, distribution, altitude, rainfall, soil, roots…",
     "treeForm.fieldset.observed": "Observed — what YOUR tree does here",
     "treeForm.fieldset.care": "Recurring care",
 

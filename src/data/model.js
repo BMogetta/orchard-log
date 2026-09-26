@@ -80,6 +80,9 @@ export function blankTree() {
     rootstock: "",
 
     // --- Spec (reference guidance) ---
+    referenceNotes: "", // free-text "encyclopedia entry" for the species: origin,
+    // distribution, altitude, rainfall, soil texture, root habit... general
+    // reference prose that isn't fertilizer/pruning-specific and isn't observed.
     sunSpec: "unknown",
     waterSpec: "unknown",
     minTempC: null, // cold hardiness floor
@@ -163,6 +166,7 @@ export function migrateTreeToV2(tree) {
       tree.observedWater === "unknown" && oldObservedWater ? oldObservedWater : "";
   }
 
+  if (tree.referenceNotes == null) tree.referenceNotes = "";
   if (tree.pruningTiming == null) tree.pruningTiming = "unknown";
   if (tree.pruningNotes == null) tree.pruningNotes = tree.pruningSpec ?? "";
   if (tree.fertilizerType == null) tree.fertilizerType = "unknown";

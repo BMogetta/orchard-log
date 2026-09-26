@@ -234,6 +234,16 @@ export default function TreeForm({ id, onBack, onSaved }) {
 
       <fieldset className="spec">
         <legend>{t("treeForm.fieldset.spec")}</legend>
+        <Field
+          label={t("treeForm.referenceNotes")}
+          hint={t("treeForm.referenceNotesHint")}
+        >
+          <textarea
+            className="reference-notes"
+            value={tree.referenceNotes ?? ""}
+            onChange={(e) => set({ referenceNotes: e.target.value })}
+          />
+        </Field>
         <Field label={t("treeForm.sun")}>
           <EnumSelect
             prefix="sun"
