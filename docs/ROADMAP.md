@@ -87,6 +87,12 @@ Phase 0.5 demo, upgraded.
       reject credentialed fetch URLs).
 - [x] Local dev CouchDB (`docker-compose.yml`): couchdb:3 + one-shot setup
       (single-node, CORS, system dbs + `orchard`). Docker only, not for CI.
+- [x] Dev slice verified end-to-end against the docker CouchDB: replication
+      push works (proven in Node), the CORS preflight returns the right headers,
+      and the page CSP now allows the configured CouchDB origin. That last one
+      was a real blocker — the pre-sync CSP locked `connect-src` to same-origin,
+      so the browser refused every replication request; fixed by injecting the
+      `VITE_COUCHDB_URL` origin into `connect-src` at build time (`vite.config.js`).
 - [ ] App (product): settings toggle + credentials UI; sync-status indicator;
       conflict strategy.
 - [ ] CouchDB container on the Pi, per-couple db, users, CORS.
