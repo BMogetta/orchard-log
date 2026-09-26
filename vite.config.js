@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -11,10 +11,38 @@ import { VitePWA } from "vite-plugin-pwa";
 // root and needs no override. The PWA scope/start_url follow this same value.
 const base = process.env.BASE_PATH ?? "/";
 
+// The page CSP (in index.html) locks connect-src to same-origin so the default
+// build makes no external calls. When optional CouchDB sync is configured
+// (VITE_COUCHDB_URL), the browser must be allowed to reach exactly that origin
+// — otherwise it refuses the replication request ("Refused to connect"). This
+// plugin widens connect-src by precisely the configured origin at build time,
+// and does nothing when sync is off, so demo / local-only builds stay locked.
+function couchdbCsp(rawUrl) {
+  let origin = null;
+  if (rawUrl && rawUrl.trim()) {
+    try {
+      origin = new URL(rawUrl.trim()).origin;
+    } catch {
+      origin = null; // malformed URL -> leave the CSP untouched
+    }
+  }
+  return {
+    name: "couchdb-connect-src-csp",
+    transformIndexHtml(html) {
+      if (!origin) return html;
+      return html.replace("connect-src 'self'", `connect-src 'self' ${origin}`);
+    },
+  };
+}
+
 // The app shell is cached for offline use. All user data lives locally in
-// IndexedDB (see src/db.js), so no network is ever required to read or write.
-export default defineConfig({
-  base,
+// IndexedDB (see src/db.js); the network is only used for optional CouchDB sync.
+export default defineConfig(({ mode }) => {
+  // Load .env files (VITE_COUCHDB_URL lives in .env.local for dev). The empty
+  // prefix loads all vars; we only read the one we need.
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    base,
   resolve: {
     alias: {
       // Production storage adapter: the browser's IndexedDB.
@@ -23,6 +51,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    couchdbCsp(env.VITE_COUCHDB_URL),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
@@ -47,5 +76,6 @@ export default defineConfig({
         ],
       },
     }),
-  ],
+    ],
+  };
 });

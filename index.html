@@ -3,9 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <!--
-      The app makes no external network calls: all data is local (IndexedDB),
-      photos render from blob: object URLs, and backup import reads data: URLs.
-      This CSP locks everything to same-origin while allowing exactly those.
+      Data is local by default (IndexedDB); photos render from blob: object URLs
+      and backup import reads data: URLs. This CSP locks everything to
+      same-origin while allowing exactly those. The one external call is the
+      optional CouchDB sync: when VITE_COUCHDB_URL is set, the build injects that
+      exact origin into connect-src (see couchdbCsp in vite.config.js); with sync
+      off, connect-src stays same-origin only.
     -->
     <meta
       http-equiv="Content-Security-Policy"
