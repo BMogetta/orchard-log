@@ -537,7 +537,9 @@ describe("needs-attention list", () => {
     });
     renderApp();
 
-    const panel = (await screen.findByText("Needs attention")).closest("section");
+    // By role: the badge on the tree's card carries the same words as a title.
+    const heading = await screen.findByRole("heading", { name: "Needs attention" });
+    const panel = heading.closest("section");
     expect(within(panel).getByText("Kumquat")).toBeInTheDocument();
 
     fireEvent.click(within(panel).getByText("Water check"));
