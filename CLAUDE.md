@@ -19,7 +19,8 @@ through the app's own API: Cloudflare Pages Functions (`functions/api/`) backed
 by **D1**, same-origin with the app and behind **Cloudflare Access**. Access
 decides who gets in; the API verifies the Access JWT itself and lets only
 `EDITOR_EMAIL` write, everyone else is read-only. Sync is a build flag
-(`VITE_SYNC=1`), not a code fork; a local-only demo runs on GitHub Pages. This
+(`VITE_SYNC=1`), not a code fork; `VITE_DEMO=1` builds a local-only demo with
+sample data, used for local visual checks and not deployed anywhere. This
 **supersedes two hard constraints below**: the app has an optional backend, and
 `dexie` was replaced by `pouchdb`. Ids are UUIDs and photos are PouchDB
 attachments; their images sync through a private R2 bucket. Everything else in this file still holds,
@@ -79,7 +80,8 @@ npm run build     # production build -> dist/ (must stay green)
 npm run preview   # serve the build
 ```
 
-Deploy target: static hosting (Cloudflare Pages / Netlify / GitHub Pages).
+Deploy target: Cloudflare Pages, which also runs the API and binds the database
+and photo bucket (see Release). A build without sync is plain static files.
 Verified building on Node 22.
 
 ## Release
@@ -90,7 +92,7 @@ with `VITE_SYNC=1` in one job, then, in a separate job that holds the
 Cloudflare token, applies pending D1 migrations to the remote database and
 deploys the app and its API to the Cloudflare Pages project (`orchard-log`).
 A manual run of that workflow deploys only when started from `main`.
-`deploy-pages.yml` publishes the local-only demo to GitHub Pages.
+There is no public demo deployment.
 
 - A direct push to `main` is a production deploy and a schema change. Go
   through a PR.

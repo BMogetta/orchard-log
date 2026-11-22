@@ -1,9 +1,9 @@
 import { trees, events, blankTree } from "../data";
 import { resetDatabase } from "../data/backend.js";
 
-// Demo mode ships a public, local-only showcase (GitHub Pages): PouchDB/Dexie
-// with no sync, pre-seeded so the app isn't empty. Enabled at build time with
-// VITE_DEMO=1. In every normal build this is false and none of this runs.
+// Demo mode is a local-only build with sample data, pre-seeded so the app
+// isn't empty. It never syncs and is not deployed anywhere; it is for looking
+// at the app without real data. Enabled at build time with VITE_DEMO=1. In every normal build this is false and none of this runs.
 export const isDemo = import.meta.env.VITE_DEMO === "1";
 
 const isoDaysAgo = (n) =>

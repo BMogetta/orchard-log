@@ -5,8 +5,8 @@ Direction decided 2026-07-22. The app migrates from Dexie/IndexedDB to
 self-hosted **CouchDB**. Because PouchDB uses IndexedDB locally, the same
 codebase serves both:
 
-- **Demo build** — PouchDB with no sync (local-only, works on GitHub Pages,
-  no backend).
+- **Demo build** — PouchDB with no sync (local-only, no backend), with sample
+  data. Built locally and in CI; not deployed.
 - **Real build** — PouchDB + sync through the app's own API (see Phase 3;
   originally planned as CouchDB replication).
 
@@ -39,11 +39,12 @@ cross-device id-collision merge bug by design.
 
 - [x] Seed sample trees so it isn't empty; "demo mode" banner + reset button
       (`VITE_DEMO` flag; demo code is tree-shaken out of normal builds).
-- [ ] Deploy to GitHub Pages — workflow ready (`deploy-pages.yml`); goes live on
-      first push once the repo exists and Pages source is set to GitHub Actions.
+- Dropped 2026-11-22: deploying the demo to GitHub Pages. The repository is
+      private, so Pages was never enabled and the workflow failed on every
+      push to `main`. The workflow is removed; the demo build stays for local
+      use and is still built in CI.
 
-**Exit:** `user.github.io/tree-tracker/` live. Stays the local-only build
-through the migration.
+**Exit:** a seeded local-only demo build. The public deployment was dropped.
 
 ## Phase 1 — Storage abstraction + model redesign
 
@@ -172,7 +173,7 @@ same plants, offline-first.
 ## Phase 5 — CI/CD + deployment testing
 
 - [x] `ci.yml`: pnpm install → lint → test → build ×2 (base `/` and project base).
-- [x] `deploy-pages.yml`: demo build (`VITE_DEMO=1`, `BASE_PATH`) → GitHub Pages.
+- Removed: `deploy-pages.yml` (demo → GitHub Pages), see Phase 0.5.
 - [x] E2E coverage inside the Vitest run (so CI already gates it, no Docker or
       browser needed): UI flow tests over the real App on the in-memory adapter
       (`test/flows.test.jsx`) + CouchDB sync tests via an in-process
