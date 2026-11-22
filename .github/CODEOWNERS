@@ -1,0 +1,5 @@
+# The ruleset on main requires a review from a code owner, and the owner merges
+# pull requests by bypassing that rule. Naming only the owner here is what makes
+# the rule mean something: a workflow or a bot can approve a pull request, but
+# it is not a code owner, so it cannot approve and merge one.
+* @BMogetta
