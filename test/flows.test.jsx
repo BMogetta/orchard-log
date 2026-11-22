@@ -7,6 +7,7 @@ import { I18nProvider } from "../src/lib/i18n.jsx";
 import { resetDatabase, pouch } from "../src/data/backend.js";
 import { trees, events, photos } from "../src/data/repository.js";
 import { blankTree } from "../src/data/model.js";
+import { refreshBackupState } from "../src/lib/backupReminder.js";
 
 // jsdom's Blob/File lack arrayBuffer()/text(), which backup export/import and
 // photo storage rely on. Node's implementations have them; use those globally.
@@ -181,6 +182,92 @@ describe("event photos", () => {
     const lightbox = container.querySelector(".lightbox");
     fireEvent.click(within(lightbox).getByText("Delete"));
     await waitFor(() => expect(container.querySelector("img.thumb")).toBeNull());
+  });
+});
+
+describe("backup reminder", () => {
+  beforeEach(() => {
+    localStorage.removeItem("orchard-log:last-export");
+    localStorage.removeItem("orchard-log:backup-snoozed-until");
+    refreshBackupState();
+  });
+
+  it("stays quiet while there are no trees, and speaks up once there is one", async () => {
+    renderApp();
+    await screen.findByText("Add tree");
+    await new Promise((r) => setTimeout(r, 30)); // let the tree count settle
+    expect(screen.queryByText("Export now")).toBeNull();
+
+    await trees.save({ ...blankTree(), commonName: "Olive" });
+    expect(await screen.findByText("Export now")).toBeInTheDocument();
+  });
+
+  it("does not count an export that is missing a photo's image", async () => {
+    const id = await trees.save({ ...blankTree(), commonName: "Olive" });
+    await pouch.put({ _id: "photo:no-image", treeId: id, eventId: null });
+    renderApp();
+
+    fireEvent.click(await screen.findByText("Export now"));
+    expect(await screen.findByText(/missing the images of some photos/)).toBeInTheDocument();
+    expect(screen.getByText("Export now")).toBeInTheDocument(); // still asking
+    expect(localStorage.getItem("orchard-log:last-export")).toBeNull();
+  });
+
+  it("does not count an export of nothing", async () => {
+    renderApp();
+    fireEvent.click(await screen.findByText("Backup"));
+    fireEvent.click(screen.getByText("Export backup"));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(localStorage.getItem("orchard-log:last-export")).toBeNull();
+  });
+
+  it("says so when the export fails, and keeps asking", async () => {
+    await trees.save({ ...blankTree(), commonName: "Olive" });
+    renderApp();
+    await screen.findByText("Export now");
+    vi.spyOn(pouch, "allDocs").mockRejectedValueOnce(new Error("out of memory"));
+
+    fireEvent.click(screen.getByText("Export now"));
+    expect(await screen.findByText(/could not be exported/)).toBeInTheDocument();
+    expect(localStorage.getItem("orchard-log:last-export")).toBeNull();
+  });
+
+  it("asks for a first backup, and exporting from it settles it", async () => {
+    await trees.save({ ...blankTree(), commonName: "Olive" });
+    renderApp();
+    expect(await screen.findByText(/No backup has been exported/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Export now"));
+    await waitFor(() => expect(screen.queryByText("Export now")).toBeNull());
+
+    fireEvent.click(screen.getByText("Backup"));
+    expect(screen.getByText(/Last backup exported on this device/)).toBeInTheDocument();
+  });
+
+  it("goes away for a while on Later", async () => {
+    await trees.save({ ...blankTree(), commonName: "Olive" });
+    renderApp();
+    fireEvent.click(await screen.findByText("Later"));
+    expect(screen.queryByText("Export now")).toBeNull();
+    expect(localStorage.getItem("orchard-log:last-export")).toBeNull(); // not an export
+  });
+
+  it("comes back when the last export is old, and says how old", async () => {
+    await trees.save({ ...blankTree(), commonName: "Olive" });
+    const fortyDaysAgo = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem("orchard-log:last-export", fortyDaysAgo);
+    refreshBackupState();
+    renderApp();
+    expect(await screen.findByText(/40 days since you exported/)).toBeInTheDocument();
+  });
+
+  it("is settled by an export from the Backup menu too", async () => {
+    await trees.save({ ...blankTree(), commonName: "Olive" });
+    renderApp();
+    await screen.findByText("Export now");
+    fireEvent.click(screen.getByText("Backup"));
+    fireEvent.click(screen.getByText("Export backup"));
+    await waitFor(() => expect(screen.queryByText("Export now")).toBeNull());
   });
 });
 

@@ -15,6 +15,14 @@ if (!globalThis.localStorage) {
 
 const ROLE_KEY = "orchard-log:sync-role";
 
+// Where getItem/setItem really live. With a real Storage object they are on
+// the prototype, and assigning to the instance would create a stored key
+// instead of replacing the method, so a spy on the instance does nothing.
+const storageMethods =
+  typeof Storage !== "undefined" && localStorage instanceof Storage
+    ? Storage.prototype
+    : localStorage;
+
 async function loadSync({ enabled }) {
   vi.resetModules();
   if (enabled) vi.stubEnv("VITE_SYNC", "1");
@@ -113,10 +121,10 @@ describe("remembered sync role", () => {
   });
 
   it("works with storage that throws, asking for the role each launch", async () => {
-    vi.spyOn(localStorage, "getItem").mockImplementation(() => {
+    vi.spyOn(storageMethods, "getItem").mockImplementation(() => {
       throw new Error("storage blocked");
     });
-    vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+    vi.spyOn(storageMethods, "setItem").mockImplementation(() => {
       throw new Error("storage blocked");
     });
     vi.stubGlobal(
@@ -133,6 +141,7 @@ describe("remembered sync role", () => {
 
     await until(() => sync.getSyncStatus().state === "idle");
     expect(sync.getSyncStatus().role).toBe("editor");
+    expect(storageMethods.setItem).toHaveBeenCalled(); // the failure really happened
   });
 
   it("stores the role the server reports, replacing the old one", async () => {

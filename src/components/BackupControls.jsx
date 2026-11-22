@@ -1,12 +1,14 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useSyncExternalStore } from "react";
 import { exportBackup, importBackup } from "../lib/backup.js";
 import { useT } from "../lib/i18n.jsx";
 import { useCanEdit } from "../data";
 import { BUILD_LABEL } from "../lib/version.js";
+import { getBackupState, subscribeBackupState } from "../lib/backupReminder.js";
 
 export default function BackupControls({ onDone }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const canEdit = useCanEdit();
+  const { lastExport } = useSyncExternalStore(subscribeBackupState, getBackupState);
   const fileRef = useRef();
   const [msg, setMsg] = useState("");
 
@@ -32,8 +34,13 @@ export default function BackupControls({ onDone }) {
         <button
           className="primary"
           onClick={async () => {
-            await exportBackup();
-            onDone?.();
+            try {
+              const { complete } = await exportBackup();
+              if (complete) onDone?.();
+              else setMsg(t("backup.incomplete"));
+            } catch {
+              setMsg(t("backup.failed"));
+            }
           }}
         >
           {t("backup.export")}
@@ -55,6 +62,13 @@ export default function BackupControls({ onDone }) {
         )}
       </div>
       {msg && <p className="field-hint">{msg}</p>}
+      <p className="field-hint">
+        {lastExport === null
+          ? t("backup.lastExportNever")
+          : t("backup.lastExport", {
+              date: new Date(lastExport).toLocaleDateString(lang),
+            })}
+      </p>
       <p className="field-hint">{t("app.version", { v: BUILD_LABEL })}</p>
     </div>
   );

@@ -161,7 +161,10 @@ same plants, offline-first.
       (`lib/harvest.js`; summary in the tree detail).
 - [x] List: search / sort / filter (needs-partner) / group by species.
 - [x] `.ics` export per care task (recurring VEVENT + alarm; `lib/ics.js`).
-- [ ] Gentle periodic "export your data" nudge.
+- [x] Gentle periodic "export your data" nudge: a banner for whoever owns
+      the data on the device when no backup was exported there, or the last
+      one is over 30 days old. "Later" hides it for a week. Per device, in
+      localStorage; the Backup menu shows the date of the last export.
 - [x] New tree from an existing one ("Duplicate" on the detail): opens the
       new-tree form pre-filled with the names, the spec side and the care
       routine (never done). Label, provenance, physical state, pollination

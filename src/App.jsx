@@ -6,6 +6,7 @@ import AttentionPanel from "./components/AttentionPanel.jsx";
 import BackupControls from "./components/BackupControls.jsx";
 import DemoBanner from "./components/DemoBanner.jsx";
 import SyncBanner from "./components/SyncBanner.jsx";
+import BackupReminder from "./components/BackupReminder.jsx";
 import { isDemo } from "./lib/demo.js";
 import { useT } from "./lib/i18n.jsx";
 import { useCanEdit } from "./data";
@@ -82,6 +83,7 @@ export default function App() {
 
       {isDemo && <DemoBanner />}
       <SyncBanner />
+      <BackupReminder />
 
       {menu === "backup" && (
         <div className="menu-sheet">

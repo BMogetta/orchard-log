@@ -41,7 +41,15 @@ const dict = {
 
     // --- Backup panel ---
     "app.version": "Versión {v}",
-    "backup.hint": "Tus datos viven sólo en este dispositivo. Exportá seguido y guardá el archivo en un lugar seguro — es toda tu historia.",
+    "backup.hint": "Exportá seguido y guardá el archivo en un lugar seguro: es la única copia de tu historia que tenés fuera de la app.",
+    "backup.lastExport": "Último respaldo exportado en este dispositivo: {date}",
+    "backup.lastExportNever": "Todavía no exportaste un respaldo en este dispositivo.",
+    "backup.incomplete": "Se exportó, pero a este dispositivo le faltan imágenes de algunas fotos. Volvé a exportar cuando termine de sincronizar.",
+    "backup.failed": "No se pudo exportar el respaldo. Probá de nuevo.",
+    "backupReminder.never": "Todavía no exportaste un respaldo en este dispositivo.",
+    "backupReminder.stale": "Hace {n} días que no exportás un respaldo.",
+    "backupReminder.exportNow": "Exportar ahora",
+    "backupReminder.later": "Más tarde",
     "backup.export": "Exportar respaldo",
     "backup.import": "Importar respaldo",
     "backup.confirmReplace": "¿Reemplazar TODOS los datos actuales con este respaldo? Cancelar = fusionar en su lugar.",
@@ -317,7 +325,15 @@ const dict = {
 
     // --- Backup panel ---
     "app.version": "Version {v}",
-    "backup.hint": "Your data lives only on this device. Export regularly and keep the file somewhere safe — it's your whole history.",
+    "backup.hint": "Export regularly and keep the file somewhere safe: it is the only copy of your history you hold outside the app.",
+    "backup.lastExport": "Last backup exported on this device: {date}",
+    "backup.lastExportNever": "No backup has been exported on this device yet.",
+    "backup.incomplete": "Exported, but this device is missing the images of some photos. Export again once it has finished syncing.",
+    "backup.failed": "The backup could not be exported. Try again.",
+    "backupReminder.never": "No backup has been exported on this device yet.",
+    "backupReminder.stale": "It has been {n} days since you exported a backup.",
+    "backupReminder.exportNow": "Export now",
+    "backupReminder.later": "Later",
     "backup.export": "Export backup",
     "backup.import": "Import backup",
     "backup.confirmReplace": "Replace ALL current data with this backup? Cancel = merge instead.",

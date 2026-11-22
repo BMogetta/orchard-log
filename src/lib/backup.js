@@ -1,4 +1,5 @@
 import { pouch, uid, resetDatabase } from "../data/backend.js";
+import { markExported } from "./backupReminder.js";
 import { migrateTreeToV2 } from "../data/model.js";
 
 // ---------------------------------------------------------------------------
@@ -15,6 +16,12 @@ import { migrateTreeToV2 } from "../data/model.js";
 
 const BACKUP_VERSION = 3;
 
+// Returns { complete }: false when the file was produced but is known not to
+// hold everything, which is when a photo is on this device without its image
+// (not downloaded yet, or lost). Only a complete, non-empty export counts as
+// "a backup was made" for the reminder; what happens to the file after it is
+// handed to the browser (a blocked or cancelled download) cannot be seen from
+// here.
 export async function exportBackup() {
   const res = await pouch.allDocs({ include_docs: true, attachments: true });
   const docs = res.rows
@@ -36,6 +43,10 @@ export async function exportBackup() {
   a.download = `orchard-log-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+
+  const complete = !docs.some((d) => d._id.startsWith("photo:") && !d._attachments?.image);
+  if (complete && docs.length > 0) markExported();
+  return { complete };
 }
 
 // replace=true wipes current data first; otherwise it merges. Merge is safe now
