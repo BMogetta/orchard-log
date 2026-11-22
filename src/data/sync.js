@@ -7,6 +7,9 @@ import {
   MAX_DOCS_PER_PUSH,
   MAX_PHOTO_BYTES,
   MAX_PUSH_CHARS,
+  PHOTO_PREFIX,
+  PROTOCOL_HEADER,
+  SYNC_PROTOCOL,
   SYNCED_ID,
   sniffImageType,
 } from "../../shared/sync.js";
@@ -53,7 +56,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
 // Leave headroom under the request cap for the JSON envelope around the docs.
 const PUSH_CHARS_BUDGET = MAX_PUSH_CHARS / 2;
 
-// Why a sync cycle stopped: "offline" | "signed-out" | "error".
+// Why a sync cycle stopped: "offline" | "signed-out" | "outdated" | "error".
 class SyncError extends Error {
   constructor(kind, detail) {
     super(detail ? `sync ${kind}: ${detail}` : `sync ${kind}`);
@@ -84,12 +87,16 @@ export function createSync({
         credentials: "same-origin",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         ...init,
+        headers: { [PROTOCOL_HEADER]: String(SYNC_PROTOCOL), ...init.headers },
       });
     } catch {
       throw new SyncError("offline");
     }
     if (res.type === "opaqueredirect" || res.status === 401)
       throw new SyncError("signed-out");
+    // The server speaks a newer sync contract than this build: stop, and let
+    // the UI ask for a reload, rather than store data this build mishandles.
+    if (res.status === 426) throw new SyncError("outdated");
     if (!res.ok && !accept.includes(res.status)) {
       throw new SyncError("error", `HTTP ${res.status} on ${path}`);
     }
@@ -125,7 +132,9 @@ export function createSync({
     return {
       v: STATE_VERSION,
       pushedSeq: doc?.v === STATE_VERSION ? (doc.pushedSeq ?? 0) : 0,
-      pulledSeq: doc?.pulledSeq ?? 0,
+      // Pulled again from the start too: an older build skipped documents of
+      // kinds it did not know. Re-pulling is safe, it only fills what differs.
+      pulledSeq: doc?.v === STATE_VERSION ? (doc.pulledSeq ?? 0) : 0,
       synced: doc?.synced ?? {},
       pushing: doc?.pushing ?? {},
       rejected: doc?.rejected ?? {},
@@ -199,24 +208,31 @@ export function createSync({
     }
   }
 
+  // Fetches a photo's image as a PouchDB attachment, or null when the server
+  // does not have it or sent something that is not a usable image.
+  async function downloadImage(id) {
+    const res = await request(photoPath(id), {}, [404]);
+    if (res.status === 404) return null;
+    const blob = await res.blob();
+    // Same rule as for uploads: only a real raster image of sane size is kept.
+    const type = sniffImageType(new Uint8Array(await blob.arrayBuffer()));
+    if (!type || blob.size > MAX_PHOTO_BYTES) return null;
+    return { content_type: type, data: await blobToBase64(blob) };
+  }
+
   // A photo document is only useful locally with its image attached. Returns
   // the change ready to be written: unchanged for anything that is not a live
   // photo, carrying the image already held locally when there is one, and
   // otherwise carrying the image downloaded from the server. Returns null
-  // when the server no longer has the image, or sent something that is not one.
+  // when no usable image could be had.
   async function withImage(change, local) {
     if (change.deleted || !isPhotoId(change.id)) return change;
     const held = !local?.deleted && local?.doc?._attachments?.[PHOTO_ATTACHMENT];
     if (held) {
       return { ...change, doc: { ...change.doc, _attachments: local.doc._attachments } };
     }
-    const res = await request(photoPath(change.id), {}, [404]);
-    if (res.status === 404) return null;
-    const blob = await res.blob();
-    // Same rule as for uploads: only a real raster image of sane size is kept.
-    const type = sniffImageType(new Uint8Array(await blob.arrayBuffer()));
-    if (!type || blob.size > MAX_PHOTO_BYTES) return null;
-    const image = { content_type: type, data: await blobToBase64(blob) };
+    const image = await downloadImage(change.id);
+    if (!image) return null;
     return {
       ...change,
       doc: { ...change.doc, _attachments: { [PHOTO_ATTACHMENT]: image } },
@@ -224,11 +240,68 @@ export function createSync({
     };
   }
 
+  // Photos whose image could not be restored, as "id@rev". Kept for the life
+  // of the page only, so each is tried again on the next launch but not on
+  // every cycle.
+  const unrestorable = new Set();
+
+  // Repairs photo documents that are on this device without their image. That
+  // happens when a build from before photos synced pulled the document (it
+  // knew nothing about images), and it would otherwise never heal: the server
+  // has no newer version of the document to send. Only documents that match
+  // the server are touched; anything else is for push and pull to settle.
+  // Runs last in a cycle and never fails it: a photo that cannot be repaired
+  // must not hold up the user's own changes.
+  async function restoreMissingImages(state) {
+    const res = await db.allDocs({
+      startkey: PHOTO_PREFIX,
+      endkey: `${PHOTO_PREFIX}\uffff`,
+      include_docs: true,
+    });
+    for (const { doc } of res.rows) {
+      if (!isPhotoId(doc._id) || doc._attachments?.[PHOTO_ATTACHMENT]) continue;
+      if (state.synced[doc._id] !== doc._rev) continue;
+      const attempt = `${doc._id}@${doc._rev}`;
+      if (unrestorable.has(attempt)) continue;
+
+      let image;
+      try {
+        image = await downloadImage(doc._id);
+      } catch (e) {
+        // Offline, signed out or outdated ends the cycle as usual. A server
+        // error for this one image does not.
+        if (!(e instanceof SyncError) || e.kind !== "error") throw e;
+        image = null;
+      }
+      if (!image) {
+        unrestorable.add(attempt);
+        continue;
+      }
+      // Same write-ahead note as a pulled change: this write must not look
+      // like a local edit if the cycle dies before it is recorded.
+      state.applying = { id: doc._id, body: canonicalBody(doc) };
+      await saveState(state);
+      try {
+        const { rev } = await db.put({
+          ...doc,
+          _attachments: { [PHOTO_ATTACHMENT]: image },
+        });
+        state.synced[doc._id] = rev;
+      } catch (e) {
+        if (e.status !== 409) throw e; // edited meanwhile: next cycle decides
+      }
+      state.applying = null;
+      await saveState(state);
+    }
+  }
+
   async function pull(state, canWrite) {
     for (;;) {
       const page = await api(`/api/changes?since=${state.pulledSeq}`);
       const locals = await localVersions(page.docs.map((change) => change.id));
       for (const change of page.docs) {
+        // A kind of document this build does not know: leave it alone.
+        if (!SYNCED_ID.test(change.id)) continue;
         const local = locals.get(change.id);
         const known = state.synced[change.id];
         // An editor's unpushed edit beats the incoming version; it goes up in
@@ -429,6 +502,7 @@ export function createSync({
       await pull(state, canWrite);
       if (canWrite) await push(state);
       else await discardLocalEdits(state);
+      await restoreMissingImages(state);
       setStatus({ state: "idle", role: me.role });
     } catch (e) {
       if (!(e instanceof SyncError)) console.error("[sync] failed", e);
@@ -496,7 +570,8 @@ export function createSync({
 
 // --- App-wide status, for the UI -------------------------------------------
 // state: "off" (sync not built in) | "syncing" | "idle" | "offline" |
-// "signed-out" | "error". role: null until known, then "editor" | "reader".
+// "signed-out" | "outdated" | "error". role: null until known, then "editor" |
+// "reader".
 
 // The role is remembered between launches so a read-only device starts
 // read-only, instead of showing edit controls until the first request answers

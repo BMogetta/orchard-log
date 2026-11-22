@@ -10,6 +10,7 @@ import {
   onRequestGet as getPhotoRoute,
   onRequestPut as putPhotoRoute,
 } from "../functions/api/photos/[name].js";
+import { onRequestGet as getLogin } from "../functions/api/login.js";
 import { readChanges, writeDocs, canonicalBody } from "../server/store.js";
 
 // Coverage for the sync API: the real route handlers and middleware, run
@@ -78,6 +79,10 @@ const env = (extra = {}) => ({
 });
 
 // Run a route the way Pages does: middleware first, then the handler.
+// A header set to undefined is left out (a Request would send "undefined").
+const withoutUndefined = (headers) =>
+  Object.fromEntries(Object.entries(headers).filter(([, value]) => value !== undefined));
+
 // `raw` sends the body as given (image bytes) instead of as JSON.
 async function call(
   handler,
@@ -86,11 +91,12 @@ async function call(
 ) {
   const request = new Request(path.startsWith("http") ? path : `${SITE}${path}`, {
     method,
-    headers: {
+    headers: withoutUndefined({
+      "x-orchard-sync": "2", // the app always sends its sync contract version
       ...(jwt ? { "cf-access-jwt-assertion": jwt } : {}),
       ...(body !== undefined && !raw ? { "content-type": "application/json" } : {}),
       ...headers,
-    },
+    }),
     body:
       body === undefined || raw || typeof body === "string" ? body : JSON.stringify(body),
   });
@@ -248,6 +254,57 @@ describe("authentication", () => {
 
     const deployed = await call(getMe, "/api/me", { envExtra });
     expect(deployed.status).toBe(401);
+  });
+});
+
+describe("app version", () => {
+  it("refuses an app build older than the sync contract, on every data route", async () => {
+    const jwt = await token();
+    const routes = [
+      [getMe, "/api/me", {}],
+      [getChanges, "/api/changes", {}],
+      [postDocs, "/api/docs", { method: "POST", body: { docs: [] } }],
+    ];
+    for (const version of [undefined, "1", "abc", "", "2abc", "1, 2"]) {
+      for (const [handler, path, opts] of routes) {
+        const res = await call(handler, path, {
+          jwt,
+          ...opts,
+          headers: { "x-orchard-sync": version },
+        });
+        expect(res.status, `${path} with ${version}`).toBe(426);
+      }
+    }
+    expect((await readChanges(db, 0)).docs).toEqual([]);
+  });
+
+  it("accepts the current version and newer ones", async () => {
+    const jwt = await token();
+    for (const version of ["2", "3"]) {
+      const res = await call(getMe, "/api/me", {
+        jwt,
+        headers: { "x-orchard-sync": version },
+      });
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it("still answers 401, not 426, to a caller with no identity", async () => {
+    const res = await call(getMe, "/api/me", {
+      headers: { "x-orchard-sync": undefined },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("lets the sign-in landing through, which is a plain navigation", async () => {
+    const request = new Request(`${SITE}/api/login`, {
+      headers: { "cf-access-jwt-assertion": await token() },
+    });
+    const context = { request, env: env(), data: {}, params: {} };
+    context.next = () => getLogin(context);
+    const res = await middleware(context);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe(`${SITE}/`);
   });
 });
 

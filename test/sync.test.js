@@ -19,7 +19,7 @@ import { onRequestGet as getMe } from "../functions/api/me.js";
 import { onRequestGet as getChanges } from "../functions/api/changes.js";
 import { onRequestPost as postDocs } from "../functions/api/docs.js";
 import * as photoRoute from "../functions/api/photos/[name].js";
-import { readChanges } from "../server/store.js";
+import { readChanges, writeDocs } from "../server/store.js";
 
 // End-to-end coverage for device sync: the app's real sync engine on real
 // (in-memory) PouchDB databases, talking to the real API handlers on a real
@@ -702,6 +702,99 @@ describe("photos", () => {
     await expect(b.db.get("photo:p1")).rejects.toMatchObject({ status: 404 });
   });
 
+  it("restores the image of a photo that an older build stored without one", async () => {
+    const a = device(EDITOR);
+    await a.db.put(photoDoc("photo:p1"));
+    await a.sync();
+    const serverSeq = (await readChanges(d1, 0)).lastSeq;
+
+    // What a build from before photo sync left behind: the document, pulled
+    // and recorded as matching the server, with no image.
+    const b = device(EDITOR);
+    const { rev } = await b.db.put({
+      _id: "photo:p1",
+      treeId: "tree:1",
+      eventId: null,
+      createdAt: "2026-11-01T10:00:00.000Z",
+    });
+    const { last_seq } = await b.db.changes();
+    await b.db.put({
+      _id: "_local/sync",
+      v: 2,
+      pushedSeq: last_seq,
+      pulledSeq: serverSeq, // nothing new to pull: only the repair can fix it
+      synced: { "photo:p1": rev },
+    });
+
+    expect((await b.sync()).state).toBe("idle");
+    expect(await imageOf(b.db, "photo:p1")).toEqual(JPEG);
+    expect(posts()).toBe(1); // only a's original upload: the repair is not an edit
+
+    requests = [];
+    await b.sync();
+    expect(imageRequests("GET")).toBe(0); // repaired once, not every cycle
+    expect(posts()).toBe(0);
+  });
+
+  it("does not let an unrepairable photo hold up the editor's own changes", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const online = apiAs(EDITOR);
+    const db = new PouchDB(`device-${++deviceCounter}`, { adapter: "memory" });
+    devices.push(db);
+    const sync = createSync({
+      db,
+      fetchImpl: (path, init) =>
+        path.startsWith("/api/photos/") && (init?.method ?? "GET") === "GET"
+          ? Promise.resolve(new Response("{}", { status: 500 }))
+          : online(path, init),
+    }).syncOnce;
+    const { rev } = await db.put({ _id: "photo:broken", treeId: "tree:1" });
+    await db.put({
+      _id: "_local/sync",
+      v: 2,
+      pushedSeq: 0,
+      pulledSeq: 0,
+      synced: { "photo:broken": rev },
+    });
+    await db.put({ _id: "tree:1", commonName: "Fig" });
+
+    expect((await sync()).state).toBe("idle");
+    expect(Object.keys(await serverDocs())).toEqual(["tree:1"]);
+
+    requests = [];
+    await sync();
+    expect(imageRequests("GET")).toBe(0); // not retried within the same session
+  });
+
+  it("pulls everything again after an update that widens what syncs", async () => {
+    await writeDocs(
+      d1,
+      [{ id: "tree:1", deleted: false, body: '{"commonName":"Fig"}' }],
+      EDITOR
+    );
+    const b = device(READER);
+    // An older build already pulled past this point, without storing the tree.
+    await b.db.put({ _id: "_local/sync", v: 1, pushedSeq: 0, pulledSeq: 1, synced: {} });
+
+    await b.sync();
+    expect((await b.db.get("tree:1")).commonName).toBe("Fig");
+  });
+
+  it("leaves an imageless photo alone when the server has no image for it", async () => {
+    const b = device(READER);
+    const { rev } = await b.db.put({ _id: "photo:gone", treeId: "tree:1" });
+    await b.db.put({
+      _id: "_local/sync",
+      v: 2,
+      pushedSeq: 0,
+      pulledSeq: 0,
+      synced: { "photo:gone": rev },
+    });
+
+    expect((await b.sync()).state).toBe("idle");
+    expect((await b.db.get("photo:gone"))._attachments).toBeUndefined();
+  });
+
   it("completes a photo whose image went up but whose document push failed", async () => {
     const online = apiAs(EDITOR);
     let failDocs = true;
@@ -721,6 +814,56 @@ describe("photos", () => {
     failDocs = false;
     expect((await sync()).state).toBe("idle");
     expect(Object.keys(await serverDocs())).toEqual(["photo:p1"]);
+  });
+});
+
+describe("version skew", () => {
+  it("stops and reports an outdated build when the server asks for a newer one", async () => {
+    const db = new PouchDB(`device-${++deviceCounter}`, { adapter: "memory" });
+    devices.push(db);
+    await db.put({ _id: "tree:1", commonName: "Fig" });
+    const sync = createSync({
+      db,
+      fetchImpl: async () => new Response('{"error":"app out of date"}', { status: 426 }),
+    }).syncOnce;
+
+    expect((await sync()).state).toBe("outdated");
+    expect(await serverDocs()).toEqual({});
+  });
+
+  it("sends its sync contract version on every request", async () => {
+    const seen = [];
+    const online = apiAs(EDITOR);
+    const db = new PouchDB(`device-${++deviceCounter}`, { adapter: "memory" });
+    devices.push(db);
+    await db.put({ _id: "tree:1", commonName: "Fig" });
+    const sync = createSync({
+      db,
+      fetchImpl: (path, init) => {
+        seen.push(init.headers["x-orchard-sync"]);
+        return online(path, init);
+      },
+    }).syncOnce;
+
+    expect((await sync()).state).toBe("idle");
+    expect(seen.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(seen)).toEqual(new Set(["2"]));
+  });
+
+  it("ignores a kind of document it does not know, and keeps syncing the rest", async () => {
+    await writeDocs(
+      d1,
+      [
+        { id: "future:1", deleted: false, body: '{"x":1}' },
+        { id: "tree:1", deleted: false, body: '{"commonName":"Fig"}' },
+      ],
+      EDITOR
+    );
+    const b = device(EDITOR);
+    expect((await b.sync()).state).toBe("idle");
+    expect((await b.db.get("tree:1")).commonName).toBe("Fig");
+    await expect(b.db.get("future:1")).rejects.toMatchObject({ status: 404 });
+    expect(Object.keys(await serverDocs()).sort()).toEqual(["future:1", "tree:1"]);
   });
 });
 

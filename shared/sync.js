@@ -3,6 +3,14 @@
 // and by the API (server/), so a device never sends something the server would
 // reject, which would otherwise stall its whole push queue.
 
+// Version of the sync contract, sent by the app on every API request. The API
+// refuses older versions: a tab still running an old build does not know the
+// newer document families, and would store what it pulls incorrectly (a photo
+// without its image, for example). Bump it whenever an old client could
+// mishandle what the server now sends.
+export const SYNC_PROTOCOL = 2;
+export const PROTOCOL_HEADER = "x-orchard-sync";
+
 // Only these document families sync; anything else is local-only state.
 // A photo travels in two parts: its document (which tree and event it belongs
 // to) through the same channel as every other document, and its image through

@@ -161,6 +161,15 @@ describe("a read-only device", () => {
   });
 });
 
+describe("a tab running an old build", () => {
+  it("asks for a reload", async () => {
+    sync.set({ state: "outdated", role: "editor" });
+    await openSeededTree();
+    expect(screen.getByText(/new version of the app/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reload" })).toBeInTheDocument();
+  });
+});
+
 describe("a device that may edit", () => {
   it.each([
     ["the signed-in editor", { state: "idle", role: "editor" }],

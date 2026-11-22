@@ -139,6 +139,12 @@ same id, so a device joining with old data cannot overwrite shared data. A
 read-only device always takes the server's version and re-pulls after any
 local edit or restore.
 
+Version skew: a tab keeps running the build it loaded, across deploys. The app
+sends its sync contract version and the API refuses older ones (426), so an old
+tab stops syncing and asks for a reload instead of storing data it mishandles.
+This was added after a tab from before photo sync pulled a photo document
+without its image; the app also repairs such documents on the next sync.
+
 Known limit: the same document edited on two of the editor's devices while one
 is offline keeps whichever syncs last.
 

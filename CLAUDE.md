@@ -32,6 +32,11 @@ Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
 - `shared/sync.js` is the contract both sides import (which ids sync, size
   limits, canonical body). Change it in one place only.
 - The server keeps one current version per document; last write wins.
+- Deploys do not reload open tabs, so an old build can keep talking to a new
+  server. The app sends `SYNC_PROTOCOL` (`shared/sync.js`) on every request
+  and the API answers 426 to older builds, which then ask for a reload. Bump
+  it whenever an old client could mishandle what the server now sends (a new
+  document family, a changed document shape).
 - Never trust that Access is in front of the API: the `*.pages.dev` hostname is
   not behind it. Every route goes through `functions/api/_middleware.js`.
 - A photo is a document plus an image. The image goes through
