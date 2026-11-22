@@ -1,0 +1,10 @@
+# Copy to `.dev.vars` (git-ignored) to run the sync API locally with
+# `wrangler pages dev`. There is no Cloudflare Access on localhost, so
+# DEV_USER_EMAIL stands in for the signed-in user; it is ignored on any other
+# host. Make it equal to EDITOR_EMAIL to act as the editor, different to act as
+# a read-only user.
+#
+# The localhost check reads the request's Host, so do not expose a dev server
+# that has this set through a tunnel or proxy that rewrites Host to localhost.
+DEV_USER_EMAIL=dev@example.com
+EDITOR_EMAIL=dev@example.com

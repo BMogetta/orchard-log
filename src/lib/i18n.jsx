@@ -61,6 +61,11 @@ const dict = {
     "demo.banner": "Demo — los datos quedan solo en tu navegador, en este dispositivo.",
     "demo.reset": "Reiniciar demo",
     "demo.resetConfirm": "¿Borrar todo y volver a los árboles de ejemplo?",
+    "sync.signedOut": "La sesión venció. Tus cambios quedan en este dispositivo hasta que vuelvas a entrar.",
+    "sync.signIn": "Iniciar sesión",
+    "sync.offline": "Sin conexión. Los cambios se sincronizan cuando vuelva.",
+    "sync.error": "No se pudo sincronizar. Se reintenta solo.",
+    "sync.readOnly": "Solo lectura: los cambios que hagas acá se descartan.",
 
     // --- Attention panel ---
     "attention.title": "Requiere atención",
@@ -338,6 +343,11 @@ const dict = {
     "demo.banner": "Demo — your data stays only in your browser, on this device.",
     "demo.reset": "Reset demo",
     "demo.resetConfirm": "Erase everything and restore the sample trees?",
+    "sync.signedOut": "Your session expired. Changes stay on this device until you sign in again.",
+    "sync.signIn": "Sign in",
+    "sync.offline": "Offline. Changes will sync when the connection is back.",
+    "sync.error": "Could not sync. It will retry on its own.",
+    "sync.readOnly": "Read-only: changes you make here are discarded.",
 
     // --- Attention panel ---
     "attention.title": "Needs attention",

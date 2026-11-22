@@ -16,8 +16,8 @@ migrateFromDexie()
     if (isDemo) seedDemoData();
   });
 
-// Optional live sync to a remote CouchDB. No-op unless VITE_COUCHDB_URL is set,
-// so the default build stays local-first. The demo build never syncs.
+// Optional sync with the app's own API. No-op unless the build sets VITE_SYNC=1,
+// so the default build stays local-only. The demo build never syncs.
 if (!isDemo) startSyncIfConfigured();
 
 createRoot(document.getElementById("root")).render(

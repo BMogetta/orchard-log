@@ -7,8 +7,8 @@ codebase serves both:
 
 - **Demo build** — PouchDB with no sync (local-only, works on GitHub Pages,
   no backend).
-- **Real build** — PouchDB + live replication to CouchDB (shared between two
-  devices, offline-first).
+- **Real build** — PouchDB + sync through the app's own API (see Phase 3;
+  originally planned as CouchDB replication).
 
 Sync is a config flag, not a code fork. Integer auto-increment ids become
 **UUIDs** and photos become PouchDB **attachments**, which removes the
@@ -78,27 +78,64 @@ through the migration.
 attention, spec-vs-observed detail; no console errors). This build is the
 Phase 0.5 demo, upgraded.
 
-## Phase 3 — Sync backend (CouchDB on the Pi)
+## Phase 3 — Sync backend
 
-- [x] App (dev slice): optional live `PouchDB.sync(local, remote, {live, retry})`
-      bolted onto the shared local pouch (`data/sync.js`), gated by
-      `VITE_COUCHDB_URL`. No-op when unset (stays local-first); demo never syncs.
-      Credentials travel via PouchDB's `auth` option, not in the URL (browsers
-      reject credentialed fetch URLs).
-- [x] Local dev CouchDB (`docker-compose.yml`): couchdb:3 + one-shot setup
-      (single-node, CORS, system dbs + `orchard`). Docker only, not for CI.
-- [x] Dev slice verified end-to-end against the docker CouchDB: replication
-      push works (proven in Node), the CORS preflight returns the right headers,
-      and the page CSP now allows the configured CouchDB origin. That last one
-      was a real blocker — the pre-sync CSP locked `connect-src` to same-origin,
-      so the browser refused every replication request; fixed by injecting the
-      `VITE_COUCHDB_URL` origin into `connect-src` at build time (`vite.config.js`).
-- [ ] App (product): settings toggle + credentials UI; sync-status indicator;
-      conflict strategy.
-- [ ] CouchDB container on the Pi, per-couple db, users, CORS.
-- [ ] Cloudflare Tunnel + Access in front (only the two of them).
+**Direction changed 2026-11-22.** The backend is no longer CouchDB on the Pi.
+It is a small sync API on **Cloudflare Pages Functions + D1**, same-origin with
+the app, behind **Cloudflare Access**. Reasons: no always-on home server, no
+second cloud account, and the access rule is now "one editor, everyone else
+read-only", which removes the need for CouchDB's multi-writer conflict
+handling. PouchDB stays as the local store; only the replication layer changes.
 
-**Exit:** real shared plants across both phones, offline-first.
+How it fits together:
+
+- **Access** decides who gets in (email allow-list on the site's hostname).
+- **The API** verifies the Access JWT on every request and decides who may
+  write: only `EDITOR_EMAIL`. Everyone else Access admits is read-only. The
+  check lives in the API because the project's `*.pages.dev` hostname is not
+  behind Access.
+- **D1** holds one row per document with a server-assigned, increasing `seq`.
+  Devices push local changes and pull "everything after the last seq I saw".
+  Last write wins; an identical re-push is a no-op.
+- **Photos do not sync yet** (`photo:*` ids are rejected by the API).
+
+- [x] API: `functions/api/` (`me`, `changes`, `docs`, `login`) + `server/`
+      (Access JWT verification, D1 store) + `migrations/0001_init.sql`. Tests
+      run the real handlers against a local D1 (`test/api.test.js`).
+- [x] App: `data/sync.js` pushes and pulls against the API, gated by
+      `VITE_SYNC=1` (no-op otherwise; the demo never syncs). The contract both
+      sides share (synced ids, size limits, canonical body) is `shared/sync.js`.
+      A banner reports an expired session (with a sign-in link), offline, sync
+      errors and read-only accounts. End-to-end tests run the real engine on
+      in-memory devices against the real handlers (`test/sync.test.js`).
+- [x] CouchDB dev slice removed (replication adapters, docker compose, the
+      `VITE_COUCHDB_URL` CSP plugin).
+- [x] PWA under Access: manifest fetched with credentials; `/api` navigations
+      bypass the cached app shell.
+- [x] D1 database created (`orchard`).
+- [ ] Cloudflare: apply the schema remotely, Pages project, custom domain,
+      Access application + policy, `EDITOR_EMAIL` secret, first deploy.
+
+After the first deploy, in this order:
+
+- [ ] Read-only accounts still see the edit controls; hide them.
+- [ ] Deploy the real app from CI on merge to `main` (today it is a manual
+      `wrangler pages deploy`).
+- [ ] Photo sync (D1 blobs or R2, undecided).
+
+How the app decides which side is newer: per document, it remembers the local
+revision that last matched the server. A different current revision is an
+unpushed local edit and wins over an incoming change (last write wins, no
+merge). A document it has never reconciled loses to the server's copy of the
+same id, so a device joining with old data cannot overwrite shared data. A
+read-only device always takes the server's version and re-pulls after any
+local edit or restore.
+
+Known limit: the same document edited on two of the editor's devices while one
+is offline keeps whichever syncs last.
+
+**Exit:** the owner edits from any of their devices and invited readers see the
+same plants, offline-first.
 
 ## Phase 4 — Features (platform now solid)
 
@@ -119,7 +156,7 @@ Phase 0.5 demo, upgraded.
       browser needed): UI flow tests over the real App on the in-memory adapter
       (`test/flows.test.jsx`) + CouchDB sync tests via an in-process
       express-pouchdb server (`test/sync.test.js`).
-- [ ] Real app → Cloudflare Pages.
+- [ ] Real app → Cloudflare Pages (with the Phase 3 API).
 - [ ] Playwright smoke test of critical flows against the *deployed* build
       (real browser / IndexedDB / service worker; complements the jsdom flows).
 

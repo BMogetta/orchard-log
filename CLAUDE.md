@@ -12,18 +12,29 @@ The whole point is that observed overrides spec — e.g. the label says "full
 sun" but the plant scorched on the terrace, so it now lives in part shade. Keep
 these two clearly separate in data and UI. Do not collapse them.
 
-## Direction (decided 2026-07-22) — read `docs/ROADMAP.md`
+## Direction (decided 2026-07-22, backend revised 2026-11-22): read `docs/ROADMAP.md`
 
-The app is migrating from Dexie/IndexedDB to **PouchDB** (single storage layer)
-with **optional** live sync to a self-hosted **CouchDB** (Raspberry Pi, behind
-Cloudflare Tunnel + Access). Frontend stays independent on Cloudflare Pages; a
-local-only demo runs on GitHub Pages. This **supersedes two hard constraints
-below**: the app will have an optional backend, and `dexie` is being replaced by
-`pouchdb` (so "minimal dependencies" is relaxed to allow the sync stack). Ids
-move to UUIDs and photos to PouchDB attachments. Everything else in this file
-still holds — especially spec-vs-observed, bilingual UI, and export must keep
-working. Until the migration lands, the sections below describe the *current*
-code; check `docs/ROADMAP.md` for phase status before assuming.
+Storage is **PouchDB** (IndexedDB in the browser), with **optional** sync
+through the app's own API: Cloudflare Pages Functions (`functions/api/`) backed
+by **D1**, same-origin with the app and behind **Cloudflare Access**. Access
+decides who gets in; the API verifies the Access JWT itself and lets only
+`EDITOR_EMAIL` write, everyone else is read-only. Sync is a build flag
+(`VITE_SYNC=1`), not a code fork; a local-only demo runs on GitHub Pages. This
+**supersedes two hard constraints below**: the app has an optional backend, and
+`dexie` was replaced by `pouchdb`. Ids are UUIDs and photos are PouchDB
+attachments (photos do not sync yet). Everything else in this file still holds,
+especially spec-vs-observed, bilingual UI, and export must keep working. The
+sections below still describe parts of the pre-migration code; check
+`docs/ROADMAP.md` for phase status before assuming.
+
+Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
+
+- `shared/sync.js` is the contract both sides import (which ids sync, size
+  limits, canonical body). Change it in one place only.
+- The server keeps one current version per document; last write wins.
+- Never trust that Access is in front of the API: the `*.pages.dev` hostname is
+  not behind it. Every route goes through `functions/api/_middleware.js`.
+- Local API: `pnpm dev:api` (see `.env.local.example` and `.dev.vars.example`).
 
 ## Hard constraints — do not violate
 

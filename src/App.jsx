@@ -6,6 +6,7 @@ import AttentionPanel from "./components/AttentionPanel.jsx";
 import BackupControls from "./components/BackupControls.jsx";
 import ZonesControls from "./components/ZonesControls.jsx";
 import DemoBanner from "./components/DemoBanner.jsx";
+import SyncBanner from "./components/SyncBanner.jsx";
 import { isDemo } from "./lib/demo.js";
 import { useT } from "./lib/i18n.jsx";
 
@@ -59,6 +60,7 @@ export default function App() {
       </header>
 
       {isDemo && <DemoBanner />}
+      <SyncBanner />
 
       {menu === "zones" && (
         <div className="menu-sheet">

@@ -250,7 +250,8 @@ p.reference-notes { white-space: pre-wrap; }
 .zone-add input { flex: 1; width: auto; }
 
 /* Demo banner */
-.demo-banner {
+.demo-banner,
+.sync-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -261,7 +262,8 @@ p.reference-notes { white-space: pre-wrap; }
   border-bottom: 1px solid var(--line);
   font-size: 0.85rem;
 }
-.demo-banner button { color: var(--amber); flex-shrink: 0; }
+.demo-banner button,
+.sync-banner a { color: var(--amber); flex-shrink: 0; }
 
 /* Accessibility */
 :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }

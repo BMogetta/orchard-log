@@ -1,0 +1,25 @@
+# Cloudflare Pages project: the static app (dist/) plus the sync API under
+# functions/api/. The API is same-origin with the app, so the page CSP needs no
+# extra connect-src and there is no CORS surface.
+name = "orchard-log"
+compatibility_date = "2026-11-01"
+pages_build_output_dir = "dist"
+
+# Identity comes from Cloudflare Access in front of the site. Both values are
+# public identifiers (not secrets) taken from the Access application:
+#   ACCESS_TEAM_DOMAIN  e.g. "myteam.cloudflareaccess.com"
+#   ACCESS_AUD          the application's audience tag
+# The API fails closed while they are empty. EDITOR_EMAIL (the only identity
+# allowed to write) is set as a secret, not here:
+#   wrangler pages secret put EDITOR_EMAIL
+[vars]
+ACCESS_TEAM_DOMAIN = "bmogetta.cloudflareaccess.com"
+ACCESS_AUD = "0bb00006afc1ce6814982da4d241538424f625e0a47b110b1ab1ae5021b693dd"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "orchard"
+# Identifies the remote database (not a secret). Local dev and tests use an
+# on-disk/in-memory D1 and ignore it.
+database_id = "281e6b08-d80d-4364-8bdc-599f56adc587"
+migrations_dir = "migrations"
