@@ -186,6 +186,9 @@ same plants, offline-first.
       (`test/flows.test.jsx`) + CouchDB sync tests via an in-process
       express-pouchdb server (`test/sync.test.js`).
 - [x] Real app → Cloudflare Pages (with the Phase 3 API).
+- [x] The app notices a newer build installed behind an open page and offers
+      a reload, instead of finding out when the API refuses it. Checked in a
+      real browser against a production build with its service worker.
 - [x] Versions: release-please keeps a release pull request with the next
       version and changelog; merging it tags the release. Versions label
       `main`, they do not gate the deploy. The app shows its version and build

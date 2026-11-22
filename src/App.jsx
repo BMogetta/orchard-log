@@ -7,6 +7,7 @@ import BackupControls from "./components/BackupControls.jsx";
 import DemoBanner from "./components/DemoBanner.jsx";
 import SyncBanner from "./components/SyncBanner.jsx";
 import BackupReminder from "./components/BackupReminder.jsx";
+import UpdateBanner from "./components/UpdateBanner.jsx";
 import { isDemo } from "./lib/demo.js";
 import { useT } from "./lib/i18n.jsx";
 import { useCanEdit } from "./data";
@@ -82,6 +83,7 @@ export default function App() {
       </header>
 
       {isDemo && <DemoBanner />}
+      <UpdateBanner />
       <SyncBanner />
       <BackupReminder />
 

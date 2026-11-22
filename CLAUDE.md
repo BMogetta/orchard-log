@@ -34,7 +34,10 @@ Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
   limits, canonical body). Change it in one place only.
 - The server keeps one current version per document; last write wins.
 - Deploys do not reload open tabs, so an old build can keep talking to a new
-  server. The app sends `SYNC_PROTOCOL` (`shared/sync.js`) on every request
+  server. The app looks for a new service worker when it comes back into view
+  and, in the usual case, offers a reload once one has taken control
+  (`src/lib/update.js`). That is a courtesy and can miss; the guarantee is the
+  version check that follows. The app sends `SYNC_PROTOCOL` (`shared/sync.js`) on every request
   and the API answers 426 to older builds, which then ask for a reload. Bump
   it whenever an old client could mishandle what the server now sends (a new
   document family, a changed document shape).

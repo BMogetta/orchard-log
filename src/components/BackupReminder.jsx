@@ -10,6 +10,7 @@ import {
 } from "../lib/backupReminder.js";
 import { isDemo } from "../lib/demo.js";
 import { useT } from "../lib/i18n.jsx";
+import { isUpdateAvailable, subscribeUpdateAvailable } from "../lib/update.js";
 
 // Shown now and then to whoever owns the data on this device: the editor, or
 // anyone on a build without sync. Not to read-only accounts or while the role
@@ -22,12 +23,15 @@ export default function BackupReminder() {
     getBackupState
   );
   const count = useLive(async () => (await trees.all()).length, [], 0);
+  const updating = useSyncExternalStore(subscribeUpdateAvailable, isUpdateAvailable);
   // null | "incomplete" | "failed": why the last attempt did not settle it.
   const [problem, setProblem] = useState(null);
 
   const owner = state === "off" || role === "editor";
   const now = Date.now();
+  // One thing at a time: an update to reload into comes first.
   const remind =
+    !updating &&
     !isDemo &&
     owner &&
     shouldRemind({ now, lastExport, snoozedUntil, hasData: count > 0 });

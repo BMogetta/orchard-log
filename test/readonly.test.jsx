@@ -27,6 +27,13 @@ const sync = vi.hoisted(() => {
   return store;
 });
 
+const update = vi.hoisted(() => ({ available: false }));
+vi.mock("../src/lib/update.js", () => ({
+  isUpdateAvailable: () => update.available,
+  subscribeUpdateAvailable: () => () => {},
+  reloadToLatest: () => {},
+}));
+
 vi.mock("../src/data/sync.js", () => ({
   getSyncStatus: sync.getSyncStatus,
   subscribeSyncStatus: sync.subscribeSyncStatus,
@@ -89,6 +96,7 @@ beforeEach(async () => {
 afterEach(() => {
   cleanup();
   sync.set({ state: "off", role: null });
+  update.available = false;
 });
 
 describe("a read-only device", () => {
@@ -187,6 +195,27 @@ describe("a read-only device", () => {
     await openSeededTree();
     expect(controls("Edit")).toHaveLength(0);
     expect(document.querySelectorAll('input[type="file"]')).toHaveLength(0);
+  });
+});
+
+describe("a newer build installed behind the page", () => {
+  it("offers a reload, once, even when the API has also refused this build", async () => {
+    update.available = true;
+    sync.set({ state: "idle", role: "editor" });
+    await openSeededTree();
+    expect(screen.getByText("There is a new version of the app.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Reload" })).toHaveLength(1);
+
+    act(() => sync.set({ state: "outdated", role: "editor" }));
+    expect(screen.getAllByRole("button", { name: "Reload" })).toHaveLength(1);
+  });
+
+  it("holds back the backup reminder while there is an update to reload into", async () => {
+    update.available = true;
+    sync.set({ state: "idle", role: "editor" });
+    await openSeededTree();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("Export now")).not.toBeInTheDocument();
   });
 });
 
