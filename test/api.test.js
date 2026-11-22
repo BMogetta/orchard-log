@@ -6,6 +6,10 @@ import { onRequest as middleware } from "../functions/api/_middleware.js";
 import { onRequestGet as getMe } from "../functions/api/me.js";
 import { onRequestGet as getChanges } from "../functions/api/changes.js";
 import { onRequestPost as postDocs } from "../functions/api/docs.js";
+import {
+  onRequestGet as getPhotoRoute,
+  onRequestPut as putPhotoRoute,
+} from "../functions/api/photos/[name].js";
 import { readChanges, writeDocs, canonicalBody } from "../server/store.js";
 
 // Coverage for the sync API: the real route handlers and middleware, run
@@ -20,6 +24,7 @@ const SITE = "https://orchard.example.com";
 
 let platform;
 let db;
+let bucket;
 let signer; // key pair whose public half the certs endpoint serves
 let stranger; // key pair the certs endpoint has never heard of
 let publishedKeys; // what the stubbed certs endpoint currently serves
@@ -65,6 +70,7 @@ async function token(claims = {}, { key = signer.privateKey, header = {} } = {})
 
 const env = (extra = {}) => ({
   DB: db,
+  PHOTOS: bucket,
   ACCESS_TEAM_DOMAIN: TEAM,
   ACCESS_AUD: AUD,
   EDITOR_EMAIL: EDITOR,
@@ -72,28 +78,29 @@ const env = (extra = {}) => ({
 });
 
 // Run a route the way Pages does: middleware first, then the handler.
+// `raw` sends the body as given (image bytes) instead of as JSON.
 async function call(
   handler,
   path,
-  { jwt, method = "GET", body, headers = {}, envExtra } = {}
+  { jwt, method = "GET", body, headers = {}, envExtra, params = {}, raw = false } = {}
 ) {
   const request = new Request(path.startsWith("http") ? path : `${SITE}${path}`, {
     method,
     headers: {
       ...(jwt ? { "cf-access-jwt-assertion": jwt } : {}),
-      ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      ...(body !== undefined && !raw ? { "content-type": "application/json" } : {}),
       ...headers,
     },
     body:
-      body === undefined
-        ? undefined
-        : typeof body === "string"
-          ? body
-          : JSON.stringify(body),
+      body === undefined || raw || typeof body === "string" ? body : JSON.stringify(body),
   });
-  const context = { request, env: env(envExtra), data: {} };
+  const context = { request, env: env(envExtra), data: {}, params };
   context.next = () => handler(context);
   const res = await middleware(context);
+  if (res.headers.get("content-type")?.startsWith("image/")) {
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return { status: res.status, headers: res.headers, bytes };
+  }
   return { status: res.status, body: await res.json() };
 }
 
@@ -103,6 +110,7 @@ const push = (docs, opts = {}) =>
 beforeAll(async () => {
   platform = await getPlatformProxy({ persist: false });
   db = platform.env.DB;
+  bucket = platform.env.PHOTOS;
   const schema = readFileSync(
     new URL("../migrations/0001_init.sql", import.meta.url),
     "utf8"
@@ -140,6 +148,8 @@ beforeEach(async () => {
     db.prepare("DELETE FROM docs"),
     db.prepare("UPDATE meta SET value = 0 WHERE key = 'seq'"),
   ]);
+  const { objects } = await bucket.list();
+  if (objects.length) await bucket.delete(objects.map((o) => o.key));
 });
 
 describe("authentication", () => {
@@ -360,7 +370,7 @@ describe("POST /api/docs", () => {
     const jwt = await token();
     const good = { id: "tree:a", doc: { commonName: "Fig" } };
     for (const bad of [
-      { id: "photo:p1", doc: {} }, // photos do not sync
+      { id: "photo:a:b", doc: {} }, // a photo id is a single path segment
       { id: "_design/x", doc: {} },
       { id: "tree:", doc: {} },
       { id: "tree:a b", doc: {} },
@@ -386,20 +396,25 @@ describe("POST /api/docs", () => {
     expect(res.status).toBe(400);
   });
 
-  it("treats a repeated delete as a no-op and the last duplicate id as the winner", async () => {
+  it("treats a repeated delete as a no-op", async () => {
     const jwt = await token();
-    await push(
+    await push([{ id: "tree:a", doc: { v: 1 } }], { jwt });
+    await push([{ id: "tree:a", deleted: true }], { jwt });
+    const again = await push([{ id: "tree:a", deleted: true }], { jwt });
+    expect(again.body.written).toBe(0);
+  });
+
+  it("rejects a batch that names the same document twice", async () => {
+    const jwt = await token();
+    const res = await push(
       [
         { id: "tree:a", doc: { v: 1 } },
         { id: "tree:a", doc: { v: 2 } },
       ],
       { jwt }
     );
-    expect((await readChanges(db, 0)).docs.map((d) => d.doc)).toEqual([{ v: 2 }]);
-
-    await push([{ id: "tree:a", deleted: true }], { jwt });
-    const again = await push([{ id: "tree:a", deleted: true }], { jwt });
-    expect(again.body.written).toBe(0);
+    expect(res.status).toBe(400);
+    expect((await readChanges(db, 0)).docs).toEqual([]);
   });
 
   it("rejects a request body over the size cap", async () => {
@@ -532,5 +547,164 @@ describe("signing key cache", () => {
     expect((await call(getMe, "/api/me", { jwt: await rotated() })).status).toBe(200);
     // The old key is still published, so existing sessions keep working.
     expect((await call(getMe, "/api/me", { jwt: await token() })).status).toBe(200);
+  });
+});
+
+describe("photos", () => {
+  const ascii = (text) => [...text].map((c) => c.charCodeAt(0));
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  const PNG = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4,
+  ]);
+  const WEBP = new Uint8Array([...ascii("RIFF"), 1, 2, 3, 4, ...ascii("WEBP")]);
+  const SVG = new TextEncoder().encode(
+    '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+  );
+
+  const upload = (name, bytes, opts = {}) =>
+    call(putPhotoRoute, `/api/photos/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      body: bytes,
+      raw: true,
+      params: { name },
+      headers: { "content-type": "image/jpeg" },
+      ...opts,
+    });
+  const download = (name, opts = {}) =>
+    call(getPhotoRoute, `/api/photos/${encodeURIComponent(name)}`, {
+      params: { name },
+      ...opts,
+    });
+
+  it("lets the editor upload an image and anyone signed in download it", async () => {
+    const up = await upload("p1", JPEG, { jwt: await token() });
+    expect(up).toEqual({
+      status: 200,
+      body: { id: "photo:p1", type: "image/jpeg", size: JPEG.length },
+    });
+
+    const down = await download("p1", { jwt: await token({ email: READER }) });
+    expect(down.status).toBe(200);
+    expect(down.bytes).toEqual(JPEG);
+    expect(down.headers.get("content-type")).toBe("image/jpeg");
+  });
+
+  it("serves images so a browser can only treat them as images", async () => {
+    await upload("p1", JPEG, { jwt: await token() });
+    const { headers } = await download("p1", { jwt: await token() });
+    expect(headers.get("x-content-type-options")).toBe("nosniff");
+    expect(headers.get("content-security-policy")).toBe("default-src 'none'; sandbox");
+    expect(headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("refuses uploads from a reader and from anyone without a token", async () => {
+    expect(
+      (await upload("p1", JPEG, { jwt: await token({ email: READER }) })).status
+    ).toBe(403);
+    expect((await upload("p1", JPEG)).status).toBe(401);
+    expect((await download("p1")).status).toBe(401);
+    expect((await bucket.list()).objects).toHaveLength(0);
+  });
+
+  it("refuses cross-origin uploads", async () => {
+    const res = await upload("p1", JPEG, {
+      jwt: await token(),
+      headers: { "content-type": "image/jpeg", origin: "https://evil.example" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("takes the type from the bytes, not from the request", async () => {
+    const jwt = await token();
+    expect((await upload("png", PNG, { jwt })).body.type).toBe("image/png");
+    expect((await upload("webp", WEBP, { jwt })).body.type).toBe("image/webp");
+    expect((await download("png", { jwt })).headers.get("content-type")).toBe(
+      "image/png"
+    );
+  });
+
+  it("rejects anything that is not a raster image, whatever it claims to be", async () => {
+    const jwt = await token();
+    const html = new TextEncoder().encode("<!doctype html><script>alert(1)</script>");
+    for (const bytes of [SVG, html, new Uint8Array(0)]) {
+      expect((await upload("p1", bytes, { jwt })).status).toBe(415);
+    }
+    expect((await bucket.list()).objects).toHaveLength(0);
+  });
+
+  it("rejects oversized images and malformed ids", async () => {
+    const jwt = await token();
+    const big = new Uint8Array(5_000_001);
+    big.set(JPEG);
+    expect((await upload("p1", big, { jwt })).status).toBe(413);
+
+    const declared = await upload("p1", JPEG, {
+      jwt,
+      headers: { "content-type": "image/jpeg", "content-length": "5000001" },
+    });
+    expect(declared.status).toBe(413); // refused on the declared size alone
+
+    for (const name of ["a:b", "a b", "a/b", ".", "..", ".hidden", "x".repeat(129), ""]) {
+      expect((await upload(name, JPEG, { jwt })).status, name).toBe(400);
+      expect((await download(name, { jwt })).status, name).toBe(400);
+    }
+  });
+
+  it("answers 404 for an image that does not exist", async () => {
+    expect((await download("nope", { jwt: await token() })).status).toBe(404);
+  });
+
+  it("refuses a photo document whose image was not uploaded", async () => {
+    const jwt = await token();
+    const doc = { id: "photo:p1", doc: { treeId: "tree:a" } };
+    const res = await push([{ id: "tree:a", doc: { commonName: "Fig" } }, doc], { jwt });
+    expect(res.status).toBe(409);
+    expect((await readChanges(db, 0)).docs).toEqual([]);
+
+    await upload("p1", JPEG, { jwt });
+    expect((await push([doc], { jwt })).body).toEqual({ written: 1 });
+  });
+
+  it("keeps the image when a delete and a re-create of the photo arrive together", async () => {
+    const jwt = await token();
+    await upload("p1", JPEG, { jwt });
+    const res = await push(
+      [
+        { id: "photo:p1", deleted: true },
+        { id: "photo:p1", doc: { treeId: "tree:a" } },
+      ],
+      { jwt }
+    );
+    expect(res.status).toBe(400);
+    expect((await download("p1", { jwt })).status).toBe(200);
+  });
+
+  it("does not let a reader delete an image through a document tombstone", async () => {
+    const jwt = await token();
+    await upload("p1", JPEG, { jwt });
+    await push([{ id: "photo:p1", doc: { treeId: "tree:a" } }], { jwt });
+
+    const res = await push([{ id: "photo:p1", deleted: true }], {
+      jwt: await token({ email: READER }),
+    });
+    expect(res.status).toBe(403);
+    expect((await download("p1", { jwt })).status).toBe(200);
+  });
+
+  it("deletes the image when the photo document is deleted", async () => {
+    const jwt = await token();
+    await upload("p1", JPEG, { jwt });
+    await upload("p2", JPEG, { jwt });
+    await push(
+      [
+        { id: "photo:p1", doc: { treeId: "tree:a" } },
+        { id: "photo:p2", doc: { treeId: "tree:a" } },
+      ],
+      { jwt }
+    );
+
+    await push([{ id: "photo:p1", deleted: true }], { jwt });
+    expect((await download("p1", { jwt })).status).toBe(404);
+    expect((await download("p2", { jwt })).status).toBe(200);
   });
 });

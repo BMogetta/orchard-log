@@ -18,6 +18,7 @@ import { onRequest as middleware } from "../functions/api/_middleware.js";
 import { onRequestGet as getMe } from "../functions/api/me.js";
 import { onRequestGet as getChanges } from "../functions/api/changes.js";
 import { onRequestPost as postDocs } from "../functions/api/docs.js";
+import * as photoRoute from "../functions/api/photos/[name].js";
 import { readChanges } from "../server/store.js";
 
 // End-to-end coverage for device sync: the app's real sync engine on real
@@ -34,6 +35,7 @@ const ROUTES = {
 
 let platform;
 let d1;
+let bucket;
 let deviceCounter = 0;
 const devices = [];
 let requests; // every call the devices made, as "METHOD /path"
@@ -50,11 +52,16 @@ function apiAs(email, { before } = {}) {
       headers: init.headers,
       body: init.body,
     });
-    const handler = ROUTES[`${method} ${new URL(request.url).pathname}`];
+    const { pathname } = new URL(request.url);
+    const photo = pathname.match(/^\/api\/photos\/(.*)$/);
+    const handler = photo
+      ? { GET: photoRoute.onRequestGet, PUT: photoRoute.onRequestPut }[method]
+      : ROUTES[`${method} ${pathname}`];
     const context = {
       request,
-      env: { DB: d1, DEV_USER_EMAIL: email, EDITOR_EMAIL: EDITOR },
+      env: { DB: d1, PHOTOS: bucket, DEV_USER_EMAIL: email, EDITOR_EMAIL: EDITOR },
       data: {},
+      params: photo ? { name: decodeURIComponent(photo[1]) } : {},
     };
     context.next = () => handler(context);
     return middleware(context);
@@ -86,6 +93,7 @@ const posts = () => requests.filter((r) => r.startsWith("POST")).length;
 beforeAll(async () => {
   platform = await getPlatformProxy({ persist: false });
   d1 = platform.env.DB;
+  bucket = platform.env.PHOTOS;
   const schema = readFileSync(
     new URL("../migrations/0001_init.sql", import.meta.url),
     "utf8"
@@ -105,6 +113,8 @@ beforeEach(async () => {
     d1.prepare("DELETE FROM docs"),
     d1.prepare("UPDATE meta SET value = 0 WHERE key = 'seq'"),
   ]);
+  const { objects } = await bucket.list();
+  if (objects.length) await bucket.delete(objects.map((o) => o.key));
 });
 
 afterEach(async () => {
@@ -113,7 +123,7 @@ afterEach(async () => {
 });
 
 describe("first sync", () => {
-  it("uploads data that already existed on the editor's device, except photos", async () => {
+  it("uploads data that already existed on the editor's device, skipping an imageless photo", async () => {
     const a = device(EDITOR);
     await a.db.bulkDocs([
       { _id: "tree:1", commonName: "Meyer Lemon", careSchedule: [] },
@@ -516,6 +526,201 @@ describe("interrupted cycles", () => {
     await b.sync();
     expect((await serverDocs())["tree:1"]).toEqual({ v: 3 });
     expect(bodyOf(await b.db.get("tree:1"))).toEqual({ v: 3 });
+  });
+});
+
+describe("photos", () => {
+  const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+  const photoDoc = (id, extra = {}) => ({
+    _id: id,
+    treeId: "tree:1",
+    eventId: null,
+    createdAt: "2026-11-01T10:00:00.000Z",
+    _attachments: {
+      image: { content_type: "image/jpeg", data: JPEG.toString("base64") },
+    },
+    ...extra,
+  });
+  const imageOf = async (db, id) => Buffer.from(await db.getAttachment(id, "image"));
+  const serverImages = async () => (await bucket.list()).objects.map((o) => o.key).sort();
+  const imageRequests = (method) =>
+    requests.filter((r) => r.startsWith(`${method} /api/photos/`)).length;
+
+  it("carries a photo, image included, to another device", async () => {
+    const a = device(EDITOR);
+    await a.db.bulkDocs([{ _id: "tree:1", commonName: "Fig" }, photoDoc("photo:p1")]);
+    expect((await a.sync()).state).toBe("idle");
+    expect(await serverImages()).toEqual(["photo:p1"]);
+
+    const b = device(READER);
+    expect((await b.sync()).state).toBe("idle");
+    const doc = await b.db.get("photo:p1");
+    expect(doc.treeId).toBe("tree:1");
+    expect(doc._attachments.image.content_type).toBe("image/jpeg");
+    expect(await imageOf(b.db, "photo:p1")).toEqual(JPEG);
+  });
+
+  it("does not transfer an image again once both sides have it", async () => {
+    const a = device(EDITOR);
+    await a.db.put(photoDoc("photo:p1"));
+    await a.sync();
+    const b = device(EDITOR);
+    await b.sync();
+    requests = [];
+
+    await a.sync();
+    await b.sync();
+    expect(imageRequests("PUT")).toBe(0);
+    expect(imageRequests("GET")).toBe(0);
+  });
+
+  it("removes the photo everywhere when it is deleted", async () => {
+    const a = device(EDITOR);
+    await a.db.put(photoDoc("photo:p1"));
+    await a.sync();
+    const b = device(READER);
+    await b.sync();
+
+    await a.db.remove(await a.db.get("photo:p1"));
+    await a.sync();
+    await b.sync();
+
+    expect(await serverImages()).toEqual([]);
+    await expect(b.db.get("photo:p1")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("uploads photos taken before photo sync existed", async () => {
+    const a = device(EDITOR);
+    await a.db.bulkDocs([{ _id: "tree:1", commonName: "Fig" }, photoDoc("photo:old")]);
+    // State as an earlier version left it: everything already examined, and
+    // the photo ignored because photos did not sync then.
+    const { last_seq } = await a.db.changes();
+    await a.db.put({ _id: "_local/sync", pushedSeq: last_seq, pulledSeq: 0, synced: {} });
+
+    await a.sync();
+    expect(await serverImages()).toEqual(["photo:old"]);
+    expect(Object.keys(await serverDocs()).sort()).toEqual(["photo:old", "tree:1"]);
+  });
+
+  it("restores a read-only device's photo after it deletes it locally", async () => {
+    const a = device(EDITOR);
+    await a.db.put(photoDoc("photo:p1"));
+    await a.sync();
+    const b = device(READER);
+    await b.sync();
+
+    await b.db.remove(await b.db.get("photo:p1"));
+    await b.sync();
+    expect(await imageOf(b.db, "photo:p1")).toEqual(JPEG);
+    expect(await serverImages()).toEqual(["photo:p1"]);
+  });
+
+  it("skips a photo whose image the server no longer has, without failing", async () => {
+    const a = device(EDITOR);
+    await a.db.bulkDocs([{ _id: "tree:1", commonName: "Fig" }, photoDoc("photo:p1")]);
+    await a.sync();
+    await bucket.delete("photo:p1"); // out-of-band loss
+
+    const b = device(READER);
+    expect((await b.sync()).state).toBe("idle");
+    await expect(b.db.get("photo:p1")).rejects.toMatchObject({ status: 404 });
+    expect((await b.db.get("tree:1")).commonName).toBe("Fig");
+  });
+
+  it("reports a photo too large to sync and still syncs the rest", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const big = Buffer.alloc(5_000_001);
+    JPEG.copy(big);
+    const a = device(EDITOR);
+    await a.db.bulkDocs([
+      photoDoc("photo:big", {
+        _attachments: {
+          image: { content_type: "image/jpeg", data: big.toString("base64") },
+        },
+      }),
+      photoDoc("photo:ok"),
+    ]);
+
+    expect((await a.sync()).state).toBe("error");
+    expect(await serverImages()).toEqual(["photo:ok"]);
+  });
+
+  it("keeps an unsupported image local without holding up everything else", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const gif = Buffer.from("GIF89a-not-accepted");
+    const a = device(EDITOR);
+    await a.db.bulkDocs([
+      photoDoc("photo:gif", {
+        _attachments: {
+          image: { content_type: "image/gif", data: gif.toString("base64") },
+        },
+      }),
+      { _id: "tree:1", commonName: "Fig" },
+      photoDoc("photo:ok"),
+    ]);
+
+    expect((await a.sync()).state).toBe("idle");
+    expect(Object.keys(await serverDocs()).sort()).toEqual(["photo:ok", "tree:1"]);
+    expect(await serverImages()).toEqual(["photo:ok"]);
+
+    requests = [];
+    expect((await a.sync()).state).toBe("idle"); // and it is not retried
+    expect(imageRequests("PUT")).toBe(0);
+    expect(await imageOf(a.db, "photo:gif")).toEqual(gif); // still on the device
+  });
+
+  it("does not sync a photo whose id would not survive a URL", async () => {
+    const a = device(EDITOR);
+    await a.db.bulkDocs([
+      photoDoc("photo:.."),
+      photoDoc("photo:a:b"),
+      photoDoc("photo:ok"),
+    ]);
+    expect((await a.sync()).state).toBe("idle");
+    expect(await serverImages()).toEqual(["photo:ok"]);
+  });
+
+  it("uploads many photos in small batches", async () => {
+    const a = device(EDITOR);
+    await a.db.bulkDocs(Array.from({ length: 12 }, (_, i) => photoDoc(`photo:p${i}`)));
+    expect((await a.sync()).state).toBe("idle");
+    expect(await serverImages()).toHaveLength(12);
+    expect(posts()).toBe(3); // 5 + 5 + 2
+  });
+
+  it("ignores a download that is not an image", async () => {
+    const a = device(EDITOR);
+    await a.db.put(photoDoc("photo:p1"));
+    await a.sync();
+    await bucket.put("photo:p1", new TextEncoder().encode("<html>"), {
+      httpMetadata: { contentType: "image/jpeg" },
+    });
+
+    const b = device(READER);
+    expect((await b.sync()).state).toBe("idle");
+    await expect(b.db.get("photo:p1")).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("completes a photo whose image went up but whose document push failed", async () => {
+    const online = apiAs(EDITOR);
+    let failDocs = true;
+    const db = new PouchDB(`device-${++deviceCounter}`, { adapter: "memory" });
+    devices.push(db);
+    const sync = createSync({
+      db,
+      fetchImpl: (path, init) =>
+        failDocs && init?.method === "POST"
+          ? Promise.reject(new TypeError("network"))
+          : online(path, init),
+    }).syncOnce;
+    await db.put(photoDoc("photo:p1"));
+
+    expect((await sync()).state).toBe("offline");
+    expect(await serverDocs()).toEqual({}); // image is up, document is not
+    failDocs = false;
+    expect((await sync()).state).toBe("idle");
+    expect(Object.keys(await serverDocs())).toEqual(["photo:p1"]);
   });
 });
 

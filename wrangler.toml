@@ -23,3 +23,8 @@ database_name = "orchard"
 # on-disk/in-memory D1 and ignore it.
 database_id = "281e6b08-d80d-4364-8bdc-599f56adc587"
 migrations_dir = "migrations"
+
+# Photo images. Private bucket: no public URL, reachable only through the API.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "orchard-photos"

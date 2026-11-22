@@ -3,9 +3,33 @@
 // and by the API (server/), so a device never sends something the server would
 // reject, which would otherwise stall its whole push queue.
 
-// Only these document families sync. Photos are intentionally excluded for now
-// (they are large binary attachments), and anything else is local-only state.
-export const SYNCED_ID = /^(tree|event|settings):[A-Za-z0-9_.:-]{1,128}$/;
+// Only these document families sync; anything else is local-only state.
+// A photo travels in two parts: its document (which tree and event it belongs
+// to) through the same channel as every other document, and its image through
+// /api/photos/<name>, where <name> is the id without the "photo:" prefix. That
+// is why a photo id allows no further ":" (it has to fit in one path segment)
+// and must start with a letter or digit ("." and ".." mean something in a URL).
+export const SYNCED_ID =
+  /^(?:(?:tree|event|settings):[A-Za-z0-9_.:-]{1,128}|photo:[A-Za-z0-9][A-Za-z0-9_.-]{0,127})$/;
+export const PHOTO_PREFIX = "photo:";
+export const isPhotoId = (id) => id.startsWith(PHOTO_PREFIX) && SYNCED_ID.test(id);
+export const photoPath = (id) => `/api/photos/${id.slice(PHOTO_PREFIX.length)}`;
+// Photos are downscaled on capture, so real ones are far below this.
+export const MAX_PHOTO_BYTES = 5_000_000;
+
+// The image type, read from the bytes: "image/jpeg" | "image/png" |
+// "image/webp" | null. Only raster formats count. The server stores and serves
+// images from the app's own origin, where an SVG or HTML file could run
+// script, so what a file claims to be is never used.
+export function sniffImageType(bytes) {
+  const starts = (...sig) => sig.every((b, i) => bytes[i] === b);
+  if (starts(0xff, 0xd8, 0xff)) return "image/jpeg";
+  if (starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return "image/png";
+  const ascii = (from, text) =>
+    [...text].every((c, i) => bytes[from + i] === c.charCodeAt(0));
+  if (bytes.length >= 12 && ascii(0, "RIFF") && ascii(8, "WEBP")) return "image/webp";
+  return null;
+}
 export const MAX_DOCS_PER_PUSH = 100;
 export const MAX_DOC_CHARS = 100_000;
 export const MAX_PUSH_CHARS = 2_000_000;

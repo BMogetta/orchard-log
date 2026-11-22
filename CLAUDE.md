@@ -22,7 +22,7 @@ decides who gets in; the API verifies the Access JWT itself and lets only
 (`VITE_SYNC=1`), not a code fork; a local-only demo runs on GitHub Pages. This
 **supersedes two hard constraints below**: the app has an optional backend, and
 `dexie` was replaced by `pouchdb`. Ids are UUIDs and photos are PouchDB
-attachments (photos do not sync yet). Everything else in this file still holds,
+attachments; their images sync through a private R2 bucket. Everything else in this file still holds,
 especially spec-vs-observed, bilingual UI, and export must keep working. The
 sections below still describe parts of the pre-migration code; check
 `docs/ROADMAP.md` for phase status before assuming.
@@ -34,6 +34,11 @@ Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
 - The server keeps one current version per document; last write wins.
 - Never trust that Access is in front of the API: the `*.pages.dev` hostname is
   not behind it. Every route goes through `functions/api/_middleware.js`.
+- A photo is a document plus an image. The image goes through
+  `/api/photos/<name>` and is stored in R2 under the photo's id; the bucket is
+  private and has no public URL. Images are served with headers that stop a
+  browser from treating them as anything but an image, and uploads are
+  accepted by their bytes (JPEG, PNG, WebP), never by the declared type.
 - Local API: `pnpm dev:api` (see `.env.local.example` and `.dev.vars.example`).
 
 ## Hard constraints — do not violate

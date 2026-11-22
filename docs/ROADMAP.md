@@ -97,7 +97,7 @@ How it fits together:
 - **D1** holds one row per document with a server-assigned, increasing `seq`.
   Devices push local changes and pull "everything after the last seq I saw".
   Last write wins; an identical re-push is a no-op.
-- **Photos do not sync yet** (`photo:*` ids are rejected by the API).
+- **Photos** sync as a document plus an image kept in R2 (see below).
 
 - [x] API: `functions/api/` (`me`, `changes`, `docs`, `login`) + `server/`
       (Access JWT verification, D1 store) + `migrations/0001_init.sql`. Tests
@@ -124,7 +124,12 @@ After the first deploy, in this order:
       offline and before the first request answers).
 - [x] Deploy the real app from CI on merge to `main`
       (`deploy-cloudflare.yml`: lint, test, build, migrations, deploy).
-- [ ] Photo sync (D1 blobs or R2, undecided).
+- [x] Photo sync. Images live in a private R2 bucket (`orchard-photos`) with
+      no public URL, served only through `/api/photos/<name>` behind the same
+      identity checks. A photo's document syncs like any other; a device
+      uploads the image before pushing the document and downloads it before
+      writing the document locally, so every device holds every image and the
+      backup export stays complete. Deleting the document deletes the image.
 
 How the app decides which side is newer: per document, it remembers the local
 revision that last matched the server. A different current revision is an

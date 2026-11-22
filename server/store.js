@@ -7,6 +7,10 @@ export {
   MAX_DOCS_PER_PUSH,
   MAX_DOC_CHARS,
   MAX_PUSH_CHARS,
+  MAX_PHOTO_BYTES,
+  PHOTO_PREFIX,
+  isPhotoId,
+  sniffImageType,
 } from "../shared/sync.js";
 
 export const CHANGES_PAGE_SIZE = 200;

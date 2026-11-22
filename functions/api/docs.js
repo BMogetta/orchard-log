@@ -1,6 +1,8 @@
 import { error, json } from "../../server/http.js";
+import { deletePhotos, hasPhoto } from "../../server/photos.js";
 import {
   canonicalBody,
+  isPhotoId,
   writeDocs,
   MAX_DOC_CHARS,
   MAX_DOCS_PER_PUSH,
@@ -12,6 +14,7 @@ const isPlainObject = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 // POST /api/docs { docs: [{ id, deleted?, doc? }] } -> { written }
+// Photo documents travel here too; their images go through /api/photos.
 // Editor only. The whole request is validated before anything is written, so a
 // bad entry rejects the batch instead of half-applying it.
 export async function onRequestPost({ request, env, data }) {
@@ -43,6 +46,7 @@ export async function onRequestPost({ request, env, data }) {
   }
 
   const docs = [];
+  const seen = new Set();
   for (const entry of payload.docs) {
     if (
       !isPlainObject(entry) ||
@@ -51,6 +55,10 @@ export async function onRequestPost({ request, env, data }) {
     ) {
       return error(400, "invalid doc id");
     }
+    // One entry per document: with two, which one "wins" would differ between
+    // the document store and the image store.
+    if (seen.has(entry.id)) return error(400, `duplicate doc id: ${entry.id}`);
+    seen.add(entry.id);
     const deleted = entry.deleted === true;
     if (!deleted && !isPlainObject(entry.doc))
       return error(400, `missing doc for ${entry.id}`);
@@ -67,5 +75,21 @@ export async function onRequestPost({ request, env, data }) {
   }
 
   if (!docs.length) return json({ written: 0 });
-  return json(await writeDocs(env.DB, docs, data.user.email));
+
+  // A photo document without its image would reach other devices as a broken
+  // photo, so the image has to be uploaded first.
+  for (const doc of docs) {
+    if (!doc.deleted && isPhotoId(doc.id) && !(await hasPhoto(env.PHOTOS, doc.id))) {
+      return error(409, `photo image not uploaded: ${doc.id}`);
+    }
+  }
+
+  const result = await writeDocs(env.DB, docs, data.user.email);
+  // After the tombstones are stored: a failure here leaves an unreferenced
+  // image behind, never a document pointing at a missing one.
+  await deletePhotos(
+    env.PHOTOS,
+    docs.filter((doc) => doc.deleted && isPhotoId(doc.id)).map((doc) => doc.id)
+  );
+  return json(result);
 }

@@ -1,10 +1,14 @@
-import { pouch } from "./backend.js";
+import { pouch, blobToBase64 } from "./backend.js";
 import {
   canonicalBody,
+  isPhotoId,
+  photoPath,
   MAX_DOC_CHARS,
   MAX_DOCS_PER_PUSH,
+  MAX_PHOTO_BYTES,
   MAX_PUSH_CHARS,
   SYNCED_ID,
+  sniffImageType,
 } from "../../shared/sync.js";
 
 // ---------------------------------------------------------------------------
@@ -14,6 +18,12 @@ import {
 //
 //   pull  server changes since the last pull  -> GET  /api/changes
 //   push  local edits not yet on the server   -> POST /api/docs   (editor only)
+//
+// A photo is a document plus an image. The document travels like any other;
+// the image is uploaded to /api/photos right before its document is pushed,
+// and downloaded right before its document is written locally. Every device
+// ends up holding every image, so the app and its backup export stay complete
+// offline.
 //
 // The server keeps one current version per document and the last write wins.
 // To know which side holds the newer version, the device remembers, per
@@ -29,6 +39,14 @@ import {
 export const syncEnabled = import.meta.env?.VITE_SYNC === "1";
 
 const STATE_ID = "_local/sync";
+// Bumped when the set of synced documents grows (v2: photos). A device whose
+// state is older re-examines its whole local history once, so documents that
+// were created before they could sync are picked up.
+const STATE_VERSION = 2;
+const PHOTO_ATTACHMENT = "image";
+// Images go up one request each before their batch of documents. Keeping few
+// per batch bounds what has to be repeated when a batch is interrupted.
+const MAX_PHOTOS_PER_PUSH = 5;
 const PUSH_DEBOUNCE_MS = 2000;
 const POLL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -51,7 +69,9 @@ export function createSync({
   fetchImpl = (...args) => fetch(...args),
   onStatus = () => {},
 } = {}) {
-  async function api(path, init = {}) {
+  // Performs a request and returns the Response. Statuses listed in `accept`
+  // are returned to the caller; any other failure throws a SyncError.
+  async function request(path, init = {}, accept = []) {
     let res;
     try {
       // "manual": an expired session answers with a redirect to the login page
@@ -70,7 +90,14 @@ export function createSync({
     }
     if (res.type === "opaqueredirect" || res.status === 401)
       throw new SyncError("signed-out");
-    if (!res.ok) throw new SyncError("error", `HTTP ${res.status} on ${path}`);
+    if (!res.ok && !accept.includes(res.status)) {
+      throw new SyncError("error", `HTTP ${res.status} on ${path}`);
+    }
+    return res;
+  }
+
+  async function api(path, init) {
+    const res = await request(path, init);
     try {
       return await res.json();
     } catch {
@@ -89,13 +116,19 @@ export function createSync({
   // overwrite the newer one.
   //   applying: { id, body } - the server version about to be written locally
   //   pushing:  id -> rev    - local revisions sent but not yet acknowledged
+  //
+  // rejected: id -> rev of photos whose image cannot be synced (not a JPEG,
+  // PNG or WebP, or too large). They stay on this device and are not retried
+  // until they change, so one bad photo does not hold up everything after it.
   async function loadState() {
     const doc = await getOrNull(db, STATE_ID);
     return {
-      pushedSeq: doc?.pushedSeq ?? 0,
+      v: STATE_VERSION,
+      pushedSeq: doc?.v === STATE_VERSION ? (doc.pushedSeq ?? 0) : 0,
       pulledSeq: doc?.pulledSeq ?? 0,
       synced: doc?.synced ?? {},
       pushing: doc?.pushing ?? {},
+      rejected: doc?.rejected ?? {},
       applying: doc?.applying ?? null,
     };
   }
@@ -145,6 +178,7 @@ export function createSync({
     if (change.deleted) {
       if (!local || local.deleted) return local?.rev;
     } else if (
+      !change.mustWrite &&
       local &&
       !local.deleted &&
       canonicalBody(local.doc) === canonicalBody(change.doc)
@@ -165,6 +199,31 @@ export function createSync({
     }
   }
 
+  // A photo document is only useful locally with its image attached. Returns
+  // the change ready to be written: unchanged for anything that is not a live
+  // photo, carrying the image already held locally when there is one, and
+  // otherwise carrying the image downloaded from the server. Returns null
+  // when the server no longer has the image, or sent something that is not one.
+  async function withImage(change, local) {
+    if (change.deleted || !isPhotoId(change.id)) return change;
+    const held = !local?.deleted && local?.doc?._attachments?.[PHOTO_ATTACHMENT];
+    if (held) {
+      return { ...change, doc: { ...change.doc, _attachments: local.doc._attachments } };
+    }
+    const res = await request(photoPath(change.id), {}, [404]);
+    if (res.status === 404) return null;
+    const blob = await res.blob();
+    // Same rule as for uploads: only a real raster image of sane size is kept.
+    const type = sniffImageType(new Uint8Array(await blob.arrayBuffer()));
+    if (!type || blob.size > MAX_PHOTO_BYTES) return null;
+    const image = { content_type: type, data: await blobToBase64(blob) };
+    return {
+      ...change,
+      doc: { ...change.doc, _attachments: { [PHOTO_ATTACHMENT]: image } },
+      mustWrite: true, // same fields as the local copy, but that one has no image
+    };
+  }
+
   async function pull(state, canWrite) {
     for (;;) {
       const page = await api(`/api/changes?since=${state.pulledSeq}`);
@@ -181,7 +240,9 @@ export function createSync({
             state.pushing[change.id] !== undefined);
         if (canWrite && unpushed) continue;
 
-        const rev = await apply(change, local, async () => {
+        const incoming = await withImage(change, local);
+        if (!incoming) continue; // no usable image: nothing to show for it
+        const rev = await apply(incoming, local, async () => {
           state.applying = {
             id: change.id,
             body: change.deleted ? null : canonicalBody(change.doc),
@@ -209,6 +270,7 @@ export function createSync({
       const rev = row.changes[0].rev;
       const known = state.synced[row.id];
       if (rev === known) continue; // already what the server has
+      if (state.rejected[row.id] === rev) continue;
       if (row.deleted) {
         // A doc the server never had needs no tombstone there.
         if (known !== undefined || state.pushing[row.id] !== undefined) {
@@ -228,37 +290,88 @@ export function createSync({
         firstBlockedSeq ??= row.seq;
         continue;
       }
+      let image = null;
+      if (isPhotoId(row.id)) {
+        image = row.doc._attachments?.[PHOTO_ATTACHMENT];
+        if (!image) continue; // a photo with no image has nothing to share
+        if (image.length > MAX_PHOTO_BYTES) {
+          console.warn(`[sync] ${row.id} is too large to sync`);
+          firstBlockedSeq ??= row.seq;
+          continue;
+        }
+      }
       pending.push({
         entry: { id: row.id, doc: JSON.parse(body) },
         rev,
         chars: body.length,
+        isPhoto: image !== null,
       });
     }
 
+    // Uploads one photo's image. False when it cannot be synced at all; the
+    // check also runs on the server, which answers 413 or 415.
+    const uploadImage = async (item) => {
+      const id = item.entry.id;
+      const data = await db.getAttachment(id, PHOTO_ATTACHMENT, { rev: item.rev });
+      const bytes =
+        data instanceof Uint8Array ? data : new Uint8Array(await data.arrayBuffer());
+      const type = sniffImageType(bytes);
+      if (!type || bytes.length > MAX_PHOTO_BYTES) return false;
+      const res = await request(
+        photoPath(id),
+        { method: "PUT", headers: { "content-type": type }, body: bytes },
+        [413, 415]
+      );
+      return res.ok;
+    };
+
     let batch = [];
     let chars = 0;
+    let photos = 0;
     const flush = async () => {
       if (!batch.length) return;
       for (const item of batch) state.pushing[item.entry.id] = item.rev;
       await saveState(state);
-      await api("/api/docs", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ docs: batch.map((item) => item.entry) }),
-      });
+      // Images first: the server refuses a photo document whose image it does
+      // not have, so other devices never receive a photo they cannot load.
+      const sendable = [];
       for (const item of batch) {
+        if (!item.isPhoto || (await uploadImage(item))) {
+          sendable.push(item);
+          continue;
+        }
+        console.warn(
+          `[sync] ${item.entry.id} is not a supported image; kept on this device`
+        );
+        state.rejected[item.entry.id] = item.rev;
+        delete state.pushing[item.entry.id];
+      }
+      if (sendable.length) {
+        await api("/api/docs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ docs: sendable.map((item) => item.entry) }),
+        });
+      }
+      for (const item of sendable) {
         state.synced[item.entry.id] = item.rev;
         delete state.pushing[item.entry.id];
+        delete state.rejected[item.entry.id];
       }
       await saveState(state);
       batch = [];
       chars = 0;
+      photos = 0;
     };
     for (const item of pending) {
-      if (batch.length >= MAX_DOCS_PER_PUSH || chars + item.chars > PUSH_CHARS_BUDGET)
-        await flush();
+      const full =
+        batch.length >= MAX_DOCS_PER_PUSH ||
+        chars + item.chars > PUSH_CHARS_BUDGET ||
+        (item.isPhoto && photos >= MAX_PHOTOS_PER_PUSH);
+      if (full) await flush();
       batch.push(item);
       chars += item.chars;
+      if (item.isPhoto) photos += 1;
     }
     await flush();
 
@@ -268,7 +381,7 @@ export function createSync({
     state.pushedSeq = firstBlockedSeq === null ? feed.last_seq : firstBlockedSeq - 1;
     await saveState(state);
     if (firstBlockedSeq !== null)
-      throw new SyncError("error", "a document is too large to sync");
+      throw new SyncError("error", "a document or photo is too large to sync");
   }
 
   // A read-only device cannot keep local edits: anything that drifted from
