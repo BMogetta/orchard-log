@@ -21,8 +21,14 @@ updates:
         patterns: ["*"]
         update-types: [minor, patch]
 
+  # Both npm projects in one entry: the app (/) and the deploy job's own small
+  # project (/deploy). wrangler is in both and a test requires the two to be
+  # on the same version, so it gets its own group: a group spans the listed
+  # directories, which puts both bumps in one pull request.
   - package-ecosystem: npm
-    directory: /
+    directories:
+      - /
+      - /deploy
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -32,5 +38,7 @@ updates:
       prefix: chore
       prefix-development: chore
     groups:
+      wrangler:
+        patterns: ["wrangler"]
       minor-and-patch:
         update-types: [minor, patch]

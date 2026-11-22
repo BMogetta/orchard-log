@@ -1,0 +1,9 @@
+{
+  "name": "orchard-log-deploy",
+  "private": true,
+  "description": "What the deploy job needs and nothing else. It is installed on its own next to the Cloudflare token, instead of the whole dev toolchain.",
+  "packageManager": "pnpm@11.2.1",
+  "dependencies": {
+    "wrangler": "^4.162.0"
+  }
+}
