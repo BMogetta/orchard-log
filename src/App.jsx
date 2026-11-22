@@ -4,7 +4,6 @@ import TreeDetail from "./components/TreeDetail.jsx";
 import TreeForm from "./components/TreeForm.jsx";
 import AttentionPanel from "./components/AttentionPanel.jsx";
 import BackupControls from "./components/BackupControls.jsx";
-import ZonesControls from "./components/ZonesControls.jsx";
 import DemoBanner from "./components/DemoBanner.jsx";
 import SyncBanner from "./components/SyncBanner.jsx";
 import { isDemo } from "./lib/demo.js";
@@ -17,17 +16,16 @@ export default function App() {
   const canEdit = useCanEdit();
   const [view, setView] = useState("list");
   const [selectedId, setSelectedId] = useState(null);
-  const [menu, setMenu] = useState(null); // null | "zones" | "backup"
+  const [menu, setMenu] = useState(null); // null | "backup"
 
   const toggleMenu = (m) => setMenu((cur) => (cur === m ? null : m));
 
-  // A device that turns read-only leaves the screens that only exist to write:
-  // the form goes back to the detail or the list, and the zones sheet closes.
-  // Leaving them is explicit so they do not reopen by themselves later.
+  // A device that turns read-only leaves the form, which only exists to write,
+  // for the detail or the list. Leaving it is explicit so it does not reopen
+  // by itself later.
   useEffect(() => {
     if (canEdit) return;
     setView((cur) => (cur === "form" ? (selectedId ? "detail" : "list") : cur));
-    setMenu((cur) => (cur === "zones" ? null : cur));
   }, [canEdit, selectedId]);
 
   function openDetail(id) {
@@ -61,11 +59,6 @@ export default function App() {
           >
             {t("nav.switchTo")}
           </button>
-          {canEdit && (
-            <button className="icon-btn" onClick={() => toggleMenu("zones")}>
-              {t("nav.zones")}
-            </button>
-          )}
           <button className="icon-btn" onClick={() => toggleMenu("backup")}>
             {t("nav.backup")}
           </button>
@@ -74,12 +67,6 @@ export default function App() {
 
       {isDemo && <DemoBanner />}
       <SyncBanner />
-
-      {canEdit && menu === "zones" && (
-        <div className="menu-sheet">
-          <ZonesControls />
-        </div>
-      )}
 
       {menu === "backup" && (
         <div className="menu-sheet">

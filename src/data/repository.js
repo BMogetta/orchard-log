@@ -100,31 +100,6 @@ export const events = {
   },
 };
 
-// User-defined location zones, stored as a single settings doc so the whole
-// list is one read/write. Trees reference a zone by its name string (in
-// `positionOnTerrace`); a name not in this list reads as "undefined".
-const ZONES_ID = "settings:zones";
-export const zones = {
-  list: async () => {
-    try {
-      return (await pouch.get(ZONES_ID)).zones ?? [];
-    } catch (e) {
-      if (e.status === 404) return [];
-      throw e;
-    }
-  },
-
-  save: async (list) => {
-    let rev;
-    try {
-      rev = (await pouch.get(ZONES_ID))._rev;
-    } catch (e) {
-      if (e.status !== 404) throw e;
-    }
-    await pouch.put({ _id: ZONES_ID, _rev: rev, zones: list });
-  },
-};
-
 export const photos = {
   forTree: async (treeId) => {
     const docs = await allOfType("photo", { attachments: true });

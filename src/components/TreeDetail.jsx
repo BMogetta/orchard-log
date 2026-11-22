@@ -313,7 +313,6 @@ export default function TreeDetail({ id, onBack, onEdit }) {
         </div>
         <div className="compare-col observed">
           <h3>{t("treeDetail.observedTitle")}</h3>
-          <Line k={t("treeDetail.position")} v={tree.positionOnTerrace} />
           <Line k={t("treeDetail.sun")} v={enumLabel("sun", tree.observedSun)} />
           {tree.observedSunNotes && (
             <p className="notes">{tree.observedSunNotes}</p>

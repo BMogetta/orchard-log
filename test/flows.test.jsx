@@ -4,8 +4,8 @@ import { Blob as NodeBlob, File as NodeFile } from "node:buffer";
 import React from "react";
 import App from "../src/App.jsx";
 import { I18nProvider } from "../src/lib/i18n.jsx";
-import { resetDatabase } from "../src/data/backend.js";
-import { trees, zones } from "../src/data/repository.js";
+import { resetDatabase, pouch } from "../src/data/backend.js";
+import { trees } from "../src/data/repository.js";
 import { blankTree } from "../src/data/model.js";
 
 // jsdom's Blob/File lack arrayBuffer()/text(), which backup export/import and
@@ -332,37 +332,43 @@ describe("tree list controls", () => {
   });
 });
 
-describe("location zones", () => {
-  it("adds a zone in the zones panel", async () => {
-    renderApp();
-    fireEvent.click(await screen.findByText("Zones"));
-    fireEvent.change(screen.getByPlaceholderText("New zone"), {
-      target: { value: "Greenhouse" },
+describe("retired location field", () => {
+  // Location and zones were removed from the UI. Data recorded with them is
+  // left in place, so an old tree or an old backup must keep working and keep
+  // its value.
+  it("shows no location anywhere and keeps the stored value through an edit", async () => {
+    await pouch.put({ _id: "settings:zones", zones: ["North terrace"] });
+    const id = await trees.save({
+      ...blankTree(),
+      commonName: "Lemon",
+      positionOnTerrace: "North terrace",
     });
-    fireEvent.click(screen.getByText("Add"));
-    expect(await screen.findByText("Greenhouse")).toBeInTheDocument();
+    renderApp();
+
+    const card = await screen.findByText("Lemon");
+    expect(screen.queryByText(/North terrace/)).toBeNull(); // list card
+    expect(screen.queryByLabelText("Location")).toBeNull(); // list filter
+
+    fireEvent.click(card);
+    await screen.findByText("Clinical history");
+    expect(screen.queryByText(/North terrace/)).toBeNull();
+    expect(screen.queryByText("Zones")).toBeNull();
+
+    fireEvent.click(screen.getAllByText("Edit")[0]);
+    const name = await screen.findByLabelText("Common name");
+    expect(screen.queryByLabelText("Location")).toBeNull();
+    fireEvent.change(name, { target: { value: "Meyer Lemon" } });
+    fireEvent.click(screen.getByText("Save tree"));
+    await screen.findByText("Clinical history");
+
+    const saved = await trees.get(id);
+    expect(saved.commonName).toBe("Meyer Lemon");
+    expect(saved.positionOnTerrace).toBe("North terrace");
+    expect((await pouch.get("settings:zones")).zones).toEqual(["North terrace"]);
   });
 
-  it("offers zones as the tree location in the form", async () => {
-    await zones.save(["Rooftop"]);
-    renderApp();
-    fireEvent.click(await screen.findByText("Add tree"));
-    await screen.findByLabelText("Location");
-    expect(await screen.findByRole("option", { name: "Rooftop" })).toBeInTheDocument();
-  });
-
-  it("filters the landing by zone", async () => {
-    await zones.save(["North terrace", "Balcony"]);
-    await trees.save({ ...blankTree(), commonName: "Lemon", positionOnTerrace: "North terrace" });
-    await trees.save({ ...blankTree(), commonName: "Fig", positionOnTerrace: "Balcony" });
-    renderApp();
-    await screen.findByText("Lemon");
-
-    fireEvent.change(screen.getByLabelText("Location"), {
-      target: { value: "North terrace" },
-    });
-    expect(screen.getByText("Lemon")).toBeInTheDocument();
-    expect(screen.queryByText("Fig")).toBeNull();
+  it("does not add the field to new trees", async () => {
+    expect(blankTree()).not.toHaveProperty("positionOnTerrace");
   });
 });
 

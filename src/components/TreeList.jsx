@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { trees, zones, useLive, useCanEdit, estimatedAgeMonths } from "../data";
+import { trees, useLive, useCanEdit, estimatedAgeMonths } from "../data";
 import { computeAttention } from "../lib/attention.js";
 import { computePhenology } from "../lib/phenology.js";
 import { Icon, WaterIcon } from "./icons.jsx";
@@ -131,15 +131,8 @@ function TreeCard({ tree, onOpen, attn, pheno }) {
         {meta.length > 0 && <small className="card-sub">{meta.join(" · ")}</small>}
       </div>
 
-      {/* Fixed slots so location / size / age never shift position. */}
+      {/* Fixed slots so size / age never shift position. */}
       <div className="card-foot">
-        <span className="fslot zone">
-          {tree.positionOnTerrace && (
-            <>
-              <span className="pin">📍</span> {tree.positionOnTerrace}
-            </>
-          )}
-        </span>
         <span className="fslot size">{tree.potLiters != null ? `${tree.potLiters}L` : ""}</span>
         <span className="fslot age">{age || ""}</span>
       </div>
@@ -151,7 +144,6 @@ export default function TreeList({ onOpen, onNew }) {
   const { t } = useT();
   const canEdit = useCanEdit();
   const list = useLive(() => trees.all(), []);
-  const zoneList = useLive(() => zones.list(), []) || [];
   const attnItems = useLive(() => computeAttention(), []) || [];
   const needsAttention = new Set(attnItems.map((a) => a.treeId));
   const phenology = useLive(() => computePhenology(), []) || new Map();
@@ -160,17 +152,10 @@ export default function TreeList({ onOpen, onNew }) {
   const [sort, setSort] = useState("label");
   const [needsPartnerOnly, setNeedsPartnerOnly] = useState(false);
   const [grouped, setGrouped] = useState(false);
-  const [zoneFilter, setZoneFilter] = useState("__all__"); // __all__ | <zone> | "" (undefined)
 
   const total = list?.length ?? 0;
 
-  const inZoneFilter = (tr) => {
-    if (zoneFilter === "__all__") return true;
-    if (zoneFilter === "") return !zoneList.includes(tr.positionOnTerrace); // undefined/orphan
-    return tr.positionOnTerrace === zoneFilter;
-  };
-
-  // search over the identity fields, then the zone + needs-partner filters, then sort.
+  // search over the identity fields, then the needs-partner filter, then sort.
   const q = norm(query);
   const visible = (list || [])
     .filter((tr) =>
@@ -180,7 +165,6 @@ export default function TreeList({ onOpen, onNew }) {
             (v) => norm(v).includes(q)
           )
     )
-    .filter(inZoneFilter)
     .filter((tr) => !needsPartnerOnly || tr.pollination === "needs-partner")
     .sort(SORTERS[sort]);
 
@@ -231,21 +215,6 @@ export default function TreeList({ onOpen, onNew }) {
             <option value="name">{t("treeList.sort.name")}</option>
             <option value="newest">{t("treeList.sort.newest")}</option>
           </select>
-          {zoneList.length > 0 && (
-            <select
-              aria-label={t("treeDetail.position")}
-              value={zoneFilter}
-              onChange={(e) => setZoneFilter(e.target.value)}
-            >
-              <option value="__all__">{t("treeList.zoneAll")}</option>
-              {zoneList.map((z) => (
-                <option key={z} value={z}>
-                  {z}
-                </option>
-              ))}
-              <option value="">{t("zones.none")}</option>
-            </select>
-          )}
           <label className="toggle">
             <input
               type="checkbox"

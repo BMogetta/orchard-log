@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   trees,
-  zones,
   useLive,
   blankTree,
   SUN_VALUES,
@@ -46,7 +45,6 @@ export default function TreeForm({ id, onBack, onSaved }) {
   const { t } = useT();
   const [tree, setTree] = useState(null);
   const others = useLive(() => trees.all(), []) || [];
-  const zoneList = useLive(() => zones.list(), []) || [];
 
   useEffect(() => {
     if (id == null) return setTree(blankTree());
@@ -425,19 +423,6 @@ export default function TreeForm({ id, onBack, onSaved }) {
 
       <fieldset className="observed">
         <legend>{t("treeForm.fieldset.observed")}</legend>
-        <Field label={t("treeForm.positionOnTerrace")}>
-          <select
-            value={zoneList.includes(tree.positionOnTerrace) ? tree.positionOnTerrace : ""}
-            onChange={(e) => set({ positionOnTerrace: e.target.value })}
-          >
-            <option value="">{t("zones.none")}</option>
-            {zoneList.map((z) => (
-              <option key={z} value={z}>
-                {z}
-              </option>
-            ))}
-          </select>
-        </Field>
         <Field label={t("treeForm.observedSun")}>
           <EnumSelect
             prefix="sun"

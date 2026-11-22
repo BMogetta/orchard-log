@@ -20,7 +20,6 @@ const dict = {
     // --- App / navigation ---
     "app.title": "OrchardLog",
     "nav.backup": "Respaldo",
-    "nav.zones": "Zonas",
     // Button text shows the OTHER language — the target of the switch.
     "nav.switchTo": "EN",
 
@@ -48,14 +47,6 @@ const dict = {
     "backup.invalidFile": "Este archivo no es un respaldo de Orchard Log.",
     "backup.invalidStructure": "El respaldo está dañado o tiene un formato inesperado.",
 
-    // --- Zones ---
-    "zones.title": "Zonas",
-    "zones.hint": "Definí las zonas de tu terraza; después asignás cada árbol a una en su ubicación.",
-    "zones.newPlaceholder": "Nueva zona",
-    "zones.add": "Agregar",
-    "zones.empty": "Todavía no hay zonas.",
-    "zones.deleteConfirm": "¿Borrar la zona «{name}»? Los árboles en ella quedarán como «Sin definir».",
-    "zones.none": "Sin definir",
 
     // --- Demo mode ---
     "demo.banner": "Demo — los datos quedan solo en tu navegador, en este dispositivo.",
@@ -88,7 +79,6 @@ const dict = {
     "treeList.groupBySpecies": "Por especie",
     "treeList.noSpecies": "Sin especie",
     "treeList.noMatches": "Ningún árbol coincide con los filtros.",
-    "treeList.zoneAll": "Todas las zonas",
 
     // --- Tree detail ---
     "treeDetail.back": "← Todos los árboles",
@@ -116,7 +106,6 @@ const dict = {
     "treeDetail.fertilizer": "Fertilizante",
     "treeDetail.pruning": "Poda",
     "treeDetail.fruiting": "Fructificación",
-    "treeDetail.position": "Ubicación",
     "treeDetail.quirks": "Particularidades",
     "treeDetail.pollinationPrefix": "Polinización: ",
     "treeDetail.pollinationSelf": "autofértil",
@@ -209,7 +198,6 @@ const dict = {
     "treeForm.pollinationPartner": "Pareja de polinización",
     "treeForm.pollinationPartnerNone": "— sin asignar —",
 
-    "treeForm.positionOnTerrace": "Ubicación",
     "treeForm.observedSun": "Tolerancia al sol observada",
     "treeForm.observedSunNotes": "Notas de sol observado",
     "treeForm.observedSunNotesHint": "p.ej. quemado bajo sol de tarde en enero",
@@ -303,7 +291,6 @@ const dict = {
     // --- App / navigation ---
     "app.title": "OrchardLog",
     "nav.backup": "Backup",
-    "nav.zones": "Zones",
     "nav.switchTo": "ES",
 
     // --- Common controls ---
@@ -330,14 +317,6 @@ const dict = {
     "backup.invalidFile": "This file is not an Orchard Log backup.",
     "backup.invalidStructure": "This backup is corrupted or has an unexpected format.",
 
-    // --- Zones ---
-    "zones.title": "Zones",
-    "zones.hint": "Define your terrace's zones; then assign each tree to one as its location.",
-    "zones.newPlaceholder": "New zone",
-    "zones.add": "Add",
-    "zones.empty": "No zones yet.",
-    "zones.deleteConfirm": "Delete the zone “{name}”? Trees in it become “Undefined”.",
-    "zones.none": "Undefined",
 
     // --- Demo mode ---
     "demo.banner": "Demo — your data stays only in your browser, on this device.",
@@ -370,7 +349,6 @@ const dict = {
     "treeList.groupBySpecies": "By species",
     "treeList.noSpecies": "No species",
     "treeList.noMatches": "No trees match the filters.",
-    "treeList.zoneAll": "All zones",
 
     // --- Tree detail ---
     "treeDetail.back": "← All trees",
@@ -398,7 +376,6 @@ const dict = {
     "treeDetail.fertilizer": "Fertilizer",
     "treeDetail.pruning": "Pruning",
     "treeDetail.fruiting": "Fruiting",
-    "treeDetail.position": "Location",
     "treeDetail.quirks": "Quirks",
     "treeDetail.pollinationPrefix": "Pollination: ",
     "treeDetail.pollinationSelf": "self-fertile",
@@ -491,7 +468,6 @@ const dict = {
     "treeForm.pollinationPartner": "Pollination partner",
     "treeForm.pollinationPartnerNone": "— none set —",
 
-    "treeForm.positionOnTerrace": "Location",
     "treeForm.observedSun": "Observed sun tolerance",
     "treeForm.observedSunNotes": "Observed sun — notes",
     "treeForm.observedSunNotesHint": "e.g. scorched in January afternoon sun",

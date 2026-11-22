@@ -31,7 +31,6 @@ const sampleTrees = [
     pruningTiming: "after-fruit",
     pollination: "self",
     fruitingSeason: "invierno",
-    positionOnTerrace: "esquina noreste",
     observedSun: "part-sun",
     observedSunNotes: "las hojas se aclaran con el sol de tarde en verano",
     quirks: "muy sensible a la falta de hierro (clorosis)",
@@ -64,7 +63,6 @@ const sampleTrees = [
     pruningTiming: "winter-dormant",
     pollination: "needs-partner",
     fruitingSeason: "verano",
-    positionOnTerrace: "borde sur, a pleno sol",
     observedWater: "high",
     observedWaterNotes: "se seca rápido en la maceta chica, subir de tamaño",
     careSchedule: [
@@ -90,7 +88,6 @@ const sampleTrees = [
     windTolerance: "high",
     pollination: "self",
     fruitingSeason: "fin de verano",
-    positionOnTerrace: "contra la pared, refugiada del viento",
     quirks: "rebrota con fuerza desde la base cada primavera",
     careSchedule: [
       { task: "chequeo de riego", intervalDays: 5, intervalDaysSummer: 3, intervalDaysWinter: 10, lastDone: isoDaysAgo(2) },

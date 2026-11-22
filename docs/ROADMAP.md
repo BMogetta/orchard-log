@@ -150,6 +150,13 @@ same plants, offline-first.
 - [x] List: search / sort / filter (needs-partner) / group by species.
 - [x] `.ics` export per care task (recurring VEVENT + alarm; `lib/ics.js`).
 - [ ] Gentle periodic "export your data" nudge.
+- [x] Location and zones removed from the UI (2026-11-22). Pots get moved
+      every couple of weeks as the sun shifts, so a fixed position went stale
+      faster than it was useful; observed sun and its notes carry what
+      matters. Stored `positionOnTerrace` values and the `settings:zones`
+      document are left untouched, and the `move` event type stays. Those
+      stored values still sync and still appear in exports, with no screen to
+      view or clear them; erasing them is a separate, deliberate cleanup.
 
 ## Phase 5 — CI/CD + deployment testing
 

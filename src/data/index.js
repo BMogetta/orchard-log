@@ -3,7 +3,7 @@
 // and never from the backend directly.
 export { useLive } from "./useLive.js";
 export { useCanEdit } from "./useCanEdit.js";
-export { trees, events, photos, zones } from "./repository.js";
+export { trees, events, photos } from "./repository.js";
 export { getSyncStatus, subscribeSyncStatus } from "./sync.js";
 export {
   blankTree,

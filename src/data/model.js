@@ -105,7 +105,6 @@ export function blankTree() {
     fruitingSeason: "", // kept as free text ("late spring", "Jan-Mar", ...)
 
     // --- Observed reality (your overrides) ---
-    positionOnTerrace: "",
     observedSun: "unknown",
     observedSunNotes: "", // e.g. "scorched in January afternoon sun"
     observedWater: "unknown",

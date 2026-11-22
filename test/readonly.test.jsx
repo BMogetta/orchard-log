@@ -106,12 +106,11 @@ describe("a read-only device", () => {
     expect(document.querySelectorAll('input[type="file"]')).toHaveLength(0);
   });
 
-  it("hides adding trees and managing zones, and keeps export without import", async () => {
+  it("hides adding trees, and keeps export without import", async () => {
     await openSeededTree();
     fireEvent.click(screen.getByText("← All trees"));
 
     expect(screen.queryByText("Add tree")).not.toBeInTheDocument();
-    expect(screen.queryByText("Zones")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Backup"));
     expect(screen.getByText("Export backup")).toBeInTheDocument();
@@ -152,18 +151,6 @@ describe("a read-only device", () => {
     act(() => sync.set({ state: "idle", role: "editor" }));
     expect(screen.queryByDisplayValue("repotted")).not.toBeInTheDocument();
     expect(screen.getByText("repotted")).toBeInTheDocument();
-  });
-
-  it("closes the zones sheet, and does not reopen it", async () => {
-    sync.set({ state: "idle", role: "editor" });
-    await openSeededTree();
-    fireEvent.click(screen.getByText("Zones"));
-    expect(screen.getByPlaceholderText("New zone")).toBeInTheDocument();
-
-    act(() => sync.set({ state: "idle", role: "reader" }));
-    expect(screen.queryByPlaceholderText("New zone")).not.toBeInTheDocument();
-    act(() => sync.set({ state: "idle", role: "editor" }));
-    expect(screen.queryByPlaceholderText("New zone")).not.toBeInTheDocument();
   });
 
   it("hides the controls on a first launch until the role is known", async () => {
