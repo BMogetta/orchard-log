@@ -503,6 +503,7 @@ export default function TreeDetail({ id, onBack, onEdit, onDuplicate }) {
                 onChange={(e) => setDraft({ ...draft, date: e.target.value })}
               />
               <input
+                className="log-notes"
                 placeholder={t("treeDetail.notesPlaceholder")}
                 value={draft.notes}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}

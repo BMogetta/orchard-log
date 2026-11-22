@@ -109,7 +109,7 @@ button { font-family: var(--body); font-size: 15px; }
    position even when the other value is empty. */
 .card-foot {
   display: grid; grid-template-columns: 3.4em 2.8em; justify-content: end; gap: 8px;
-  align-items: baseline; width: 100%; margin-top: 4px; font-size: 13px; color: var(--ink-soft);
+  align-items: baseline; width: 100%; margin-top: auto; padding-top: 4px; font-size: 13px; color: var(--ink-soft);
 }
 .card-foot .fslot { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-foot .size, .card-foot .age { text-align: right; }
@@ -173,7 +173,7 @@ button { font-family: var(--body); font-size: 15px; }
 .quick-log .ghost { display: inline-flex; align-items: center; gap: 6px; }
 .quick-log .icon { width: 16px; height: 16px; }
 .log-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-.log-form input[placeholder="Notes"] { grid-column: 1 / -1; }
+.log-form .log-notes { grid-column: 1 / -1; }
 .log-form .primary { grid-column: 1 / -1; }
 .timeline { list-style: none; padding: 0; margin: 0; }
 .timeline li { padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
@@ -206,7 +206,7 @@ button { font-family: var(--body); font-size: 15px; }
 .attention h2 { color: var(--amber); font-size: 16px; }
 .attention ul { list-style: none; padding: 0; margin: 8px 0 0; }
 .attention li button { width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid #e4d3ad; padding: 8px 0; display: flex; gap: 10px; align-items: baseline; cursor: pointer; }
-.attention em { color: var(--danger); font-size: 13px; margin-left: auto; }
+.attention em { color: var(--danger); font-size: 13px; margin-left: auto; white-space: nowrap; flex-shrink: 0; }
 
 /* Forms */
 .form fieldset { border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 14px; padding: 12px 14px; }
@@ -262,6 +262,24 @@ p.reference-notes { white-space: pre-wrap; }
 
 @media (max-width: 420px) {
   .compare { grid-template-columns: 1fr; }
+}
+/* Phone widths: rows that hold text next to several controls give the text the
+   full width and move the controls to a line of their own. */
+@media (max-width: 520px) {
+  /* Detail header: the way back on its own line, above the actions. Stacked
+     rather than stretched, so the back link is only as wide as its text. */
+  .detail > .section-head:first-child { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .detail > .section-head:first-child > .link { padding-left: 0; }
+
+  /* Care tasks: description first, its buttons underneath. */
+  .task-line { flex-direction: column; align-items: flex-start; gap: 6px; }
+
+  /* Timeline: date and type, then the note at full width, then its actions. */
+  .ev-row { grid-template-columns: auto 1fr; row-gap: 2px; }
+  .ev-notes, .ev-actions { grid-column: 1 / -1; }
+  /* On their own line these are touch targets: bigger and further apart. */
+  .ev-actions { justify-self: start; margin-left: -8px; gap: 10px; }
+  .ev-actions .sm { font-size: 13px; padding: 6px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
