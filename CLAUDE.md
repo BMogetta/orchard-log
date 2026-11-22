@@ -62,8 +62,10 @@ Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
 - **Local-first.** All data lives in IndexedDB on the device. Never introduce a
   server, account system, or required network call to read/write user data.
 - **Minimal dependencies.** Runtime deps are exactly: `react`, `react-dom`,
-  `dexie`, `dexie-react-hooks`. Do not add a router, state library, UI kit, or
-  date library without a clear reason. There is intentionally no react-router —
+  `pouchdb-core`, `pouchdb-adapter-idb` and `events` (a polyfill PouchDB
+  needs). Data stored before the move to PouchDB is read with the raw IndexedDB
+  API, not with Dexie. Do not add a router, state library, UI kit, or date
+  library without a clear reason. There is intentionally no react-router —
   view state lives in `App.jsx`.
 - **No push notifications.** iOS PWA push is unreliable; reminders are done as
   an in-app "Needs attention" list (`src/lib/attention.js`). Don't replace it
@@ -151,49 +153,56 @@ request creates the tag (`vX.Y.Z`) and the GitHub release. So:
 
 ```
 src/
-  main.jsx                     mount
+  main.jsx                     mount, legacy-data migration, sync start
   App.jsx                      view routing (list | detail | form), no router
-  db.js                        Dexie schema + tree factory + write helpers
+  data/                        the only layer that touches storage
+    backend.js                 the local PouchDB database and id helpers
+    adapter.js / .memory.js    storage adapter: IndexedDB in the app, memory in tests
+    repository.js              trees / events / photos: what components call
+    model.js                   enums, blank tree, derived values, tree copy
+    useLive.js, useCanEdit.js  reactive query hook, edit permission hook
+    sync.js                    push/pull with the API (see Direction)
+    migrate.js                 one-time import of pre-PouchDB data
   lib/
-    image.js                   camera capture + downscale before store
+    image.js                   downscale and re-encode a picked photo
     attention.js               computes the "Needs attention" list
-    backup.js                  full export/import (photos as base64 in JSON)
+    backup.js, backupReminder.js   export/import, and the export reminder
     i18n.jsx                   bilingual (es/en) dictionary + provider + hook
-  components/
-    TreeList.jsx               list, live-queried
-    TreeDetail.jsx             spec-vs-observed view, timeline, photos
-    TreeForm.jsx               create/edit, grouped fieldsets, care schedule
-    AttentionPanel.jsx         home-screen care list
-    BackupControls.jsx         export/import
+    harvest.js, phenology.js, ics.js, demo.js, update.js, version.js
+  components/                  one file per screen or banner
   styles.css                   botanical-notebook theme via CSS vars
+shared/sync.js                 sync contract shared by the app and the API
+functions/api/                 the API routes (Cloudflare Pages Functions)
+server/                        auth, document store and photo store for the API
+migrations/                    D1 schema
 public/                        favicon.svg + PWA icons
 ```
 
-## Data model (`src/db.js`)
+## Data model (`src/data/`)
 
-Three IndexedDB tables via Dexie:
+One local PouchDB database. Documents are typed by `_id` prefix:
 
-- `trees` — identity, provenance, physical, **spec fields**, **observed
-  fields**, and `careSchedule` (array of `{task, intervalDays, lastDone}`).
-- `events` — timeline rows: `repot | prune | fertilize | pest | treatment |
-  flowering | fruit-set | harvest | problem | move | note`. Has `photoIds`
-  reserved but not yet wired.
-- `photos` — image blobs. Indexed by `treeId` and `eventId` (the `eventId` hook
-  exists but the UI attaches photos to the tree, not to an event, yet).
+- `tree:<uuid>`: identity, provenance, physical, **spec fields**, **observed
+  fields**, and `careSchedule` (array of `{task, intervalDays, lastDone}` plus
+  optional seasonal intervals).
+- `event:<uuid>`: timeline rows: `repot | prune | fertilize | pest | treatment |
+  flowering | fruit-set | harvest | problem | move | note`.
+- `photo:<uuid>`: belongs to a tree and optionally to an event. The image is an
+  attachment named `image`.
 
 Notes:
 - Estimated age is derived, not stored: `estimatedAgeMonths(tree)` from
   `purchaseDate + claimedAgeMonthsAtPurchase`.
 - Pollination partner is a reference by tree `id`.
-- Reactivity uses `useLiveQuery` from `dexie-react-hooks`; prefer it over manual
-  reads so views update automatically.
+- Reactivity uses `useLive` from `src/data` (it re-runs a query on every
+  database change); prefer it over manual reads so views update automatically.
 
 ## Gotchas
 
-- **Dexie migrations.** Changing indexes (the string in `db.version(n).stores`)
-  requires bumping to `db.version(n+1)` with an `.upgrade()` when needed. Adding
-  non-indexed fields to records needs no version bump. Never edit an existing
-  `version()` block's schema in place.
+- **No local schema.** PouchDB documents are schemaless: adding a field needs
+  no migration. Changing what an existing field means does, and old backups
+  must still import. The server-side schema lives in `migrations/` and is
+  applied by the deploy.
 - **Backup format versioning.** `backup.js` writes `{ app, version }`. If the
   shape changes, bump `version` and migrate on import. Keep old backups loadable.
 - **Photos are Blobs** in IndexedDB and **base64** in the export (~33% larger).
