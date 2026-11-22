@@ -1,0 +1,36 @@
+# Keeps the pinned actions and the npm dependencies current. Updates arrive as
+# pull requests, which run CI like any other and deploy only when merged.
+#
+# A merged update runs in the deploy job, next to the Cloudflare token (wrangler
+# and its dependencies are installed there). So: a new release waits a week
+# before it is proposed, which is when most malicious releases get caught, and
+# major versions always come alone so they are read on their own. Read the
+# lockfile diff before merging.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]

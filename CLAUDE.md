@@ -102,8 +102,11 @@ There is no public demo deployment.
   Migrations run unattended: no destructive statement without a recovery plan.
 - `wrangler.toml` variables travel with the deploy. Secrets (`EDITOR_EMAIL`)
   do not: change them with `wrangler pages secret put`, then redeploy.
-- Keep credentials out of the build job of the deploy workflow, and keep its
-  actions pinned to commit SHAs. That job runs third-party code.
+- Keep credentials out of the build job of the deploy workflow. That job runs
+  third-party code.
+- Every action in every workflow is pinned to a commit SHA, with the version
+  in a trailing comment. Dependabot (`.github/dependabot.yml`) proposes the
+  updates; never replace a SHA with a tag by hand.
 - Manual fallback, from a clean and up-to-date `main`, after `pnpm lint` and
   `pnpm test`: `wrangler d1 migrations apply orchard --remote`,
   `VITE_SYNC=1 pnpm build`,
