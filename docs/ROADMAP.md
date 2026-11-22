@@ -200,4 +200,5 @@ same plants, offline-first.
 
 ## Phase 6 — Docs
 
-- [ ] Update `CLAUDE.md` and `README.md` to the new architecture.
+- [x] `CLAUDE.md` and `README.md` describe the current architecture. The
+      backlog that used to live in `CLAUDE.md` is gone; this file is the list.

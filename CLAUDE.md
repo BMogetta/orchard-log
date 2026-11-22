@@ -1,8 +1,9 @@
 # Orchard Log — project context for Claude Code
 
-Local-first PWA to keep a **clinical history** of potted fruit trees on a
-terrace. One owner, one device, no backend, no accounts. This file is the
-behavioral contract for working in this repo — read it before making changes.
+PWA to keep a **clinical history** of potted fruit trees on a terrace. The data
+lives on the device first; syncing between devices is optional. This file is
+the behavioral contract for working in this repo: read it before making
+changes.
 
 ## What this app is (and the one idea that drives it)
 
@@ -12,21 +13,17 @@ The whole point is that observed overrides spec — e.g. the label says "full
 sun" but the plant scorched on the terrace, so it now lives in part shade. Keep
 these two clearly separate in data and UI. Do not collapse them.
 
-## Direction (decided 2026-07-22, backend revised 2026-11-22): read `docs/ROADMAP.md`
+## Architecture: read `docs/ROADMAP.md` for the history and what is pending
 
-Storage is **PouchDB** (IndexedDB in the browser), with **optional** sync
-through the app's own API: Cloudflare Pages Functions (`functions/api/`) backed
-by **D1**, same-origin with the app and behind **Cloudflare Access**. Access
-decides who gets in; the API verifies the Access JWT itself and lets only
-`EDITOR_EMAIL` write, everyone else is read-only. Sync is a build flag
-(`VITE_SYNC=1`), not a code fork; `VITE_DEMO=1` builds a local-only demo with
-sample data, used for local visual checks and not deployed anywhere. This
-**supersedes two hard constraints below**: the app has an optional backend, and
-`dexie` was replaced by `pouchdb`. Ids are UUIDs and photos are PouchDB
-attachments; their images sync through a private R2 bucket. Everything else in this file still holds,
-especially spec-vs-observed, bilingual UI, and export must keep working. The
-sections below still describe parts of the pre-migration code; check
-`docs/ROADMAP.md` for phase status before assuming.
+Storage is **PouchDB** (IndexedDB in the browser). The app reads and writes
+there and nowhere else, so it works with no network. Sync is **optional**, a
+build flag (`VITE_SYNC=1`) and not a code fork: the app pushes and pulls through
+its own API, Cloudflare Pages Functions (`functions/api/`) backed by **D1** for
+documents and a private **R2** bucket for photo images, same-origin with the app
+and behind **Cloudflare Access**. Access decides who gets in; the API verifies
+the Access JWT itself and lets only `EDITOR_EMAIL` write, everyone else is
+read-only. `VITE_DEMO=1` builds a local-only demo with sample data, used for
+local visual checks and not deployed anywhere.
 
 Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
 
@@ -62,8 +59,10 @@ Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
   english slugs (`"full-sun"`), and the display label comes from a key like
   `sun.full-sun`. When adding a new string, keep the ES and EN entries next
   to each other so nobody forgets one.
-- **Local-first.** All data lives in IndexedDB on the device. Never introduce a
-  server, account system, or required network call to read/write user data.
+- **Local-first.** The device's own database is the source of truth for the
+  UI. Reading or writing user data must never require the network: sync moves
+  documents in the background and the app works fully without it. Do not add
+  an account system of the app's own; identity comes from Cloudflare Access.
 - **Minimal dependencies.** Runtime deps are exactly: `react`, `react-dom`,
   `pouchdb-core`, `pouchdb-adapter-idb` and `events` (a polyfill PouchDB
   needs). Data stored before the move to PouchDB is read with the raw IndexedDB
@@ -79,10 +78,11 @@ Sync rules worth knowing before touching `src/data/sync.js` or `server/`:
 ## Commands
 
 ```bash
-npm install
-npm run dev       # dev server
-npm run build     # production build -> dist/ (must stay green)
-npm run preview   # serve the build
+pnpm install
+pnpm dev          # dev server
+pnpm build        # production build -> dist/ (must stay green)
+pnpm preview      # serve the build
+pnpm lint
 pnpm test         # unit and integration tests (Vitest)
 pnpm e2e          # browser tests (Playwright), see below
 ```
@@ -179,7 +179,7 @@ src/
     repository.js              trees / events / photos: what components call
     model.js                   enums, blank tree, derived values, tree copy
     useLive.js, useCanEdit.js  reactive query hook, edit permission hook
-    sync.js                    push/pull with the API (see Direction)
+    sync.js                    push/pull with the API (see Architecture)
     migrate.js                 one-time import of pre-PouchDB data
   lib/
     image.js                   downscale and re-encode a picked photo
@@ -333,25 +333,3 @@ When reporting a task as done, include:
    bases when the base path is affected).
 4. **Files touched** — a short list so the user can review before staging.
 5. **Proposed commit message** in the shape above, ending with "Want to commit?".
-
-## Backlog (rough priority)
-
-1. Attach photos to a specific event and render them inline in the timeline
-   (schema already supports `photos.eventId`).
-2. Edit and delete individual events; photo lightbox + delete.
-3. `.ics` export per care task so the phone's calendar can remind.
-4. List UX: search, sort, filter, group by species; badge trees missing a
-   pollination partner.
-5. Harvest tracking: record yield on `harvest` events, show per-tree/season
-   totals.
-6. Data safety: gentle periodic "export your data" nudge.
-7. Optional cloud sync built on top of the existing export format (e.g. a file
-   in the owner's Drive) — must stay optional and local-first by default.
-8. Tests: none yet. If adding, use Vitest; start with `db.js` helpers and
-   `attention.js`.
-
-## Suggested first session
-
-> Read CLAUDE.md. Run `npm install && npm run build` to confirm the baseline is
-> green. Then implement backlog item 1 (photos attached to events, shown in the
-> timeline), keeping the export format backward-compatible.
