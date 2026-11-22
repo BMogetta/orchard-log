@@ -626,7 +626,7 @@ export default function TreeDetail({ id, onBack, onEdit }) {
             <FullImage blob={lightbox.blob} />
             <div className="lightbox-actions">
               {canEdit && (
-                <button className="link danger" onClick={deleteLightboxPhoto}>
+                <button className="ghost danger" onClick={deleteLightboxPhoto}>
                   {t("common.delete")}
                 </button>
               )}
