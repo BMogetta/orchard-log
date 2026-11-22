@@ -108,15 +108,23 @@ request creates the tag (`vX.Y.Z`) and the GitHub release. So:
   major.
 - The app shows its version and the commit it was built from in the Backup menu
   (`src/lib/version.js`). Use that to tell which build a device is running.
-- The release pull request is opened by a workflow, which does not trigger CI by
-  itself; `release.yml` starts CI on that branch. If its check is missing,
-  close and reopen the pull request.
+- The release pull request is opened by a workflow, so its own CI run waits
+  for approval and reports nothing. `release.yml` starts CI on the release
+  branch instead, and that run counts as the required check. If the check is
+  missing, start it by hand:
+  `gh workflow run ci.yml --ref release-please--branches--main--components--orchard-log`.
 - Read the release pull request's diff before merging it. Titles of merged
   pull requests go into the changelog as written, and a merged pull request's
   body can override how release-please reads its commits.
 - `release.yml` runs third-party code with write access to the repository. Do
   not give that job `actions: write`, and do not loosen the approval rule on
-  `main`: together they are what keeps that access away from a deploy.
+  `main` (a code owner review, with `.github/CODEOWNERS` naming only the
+  owner): together they stop a workflow from approving and merging.
+- Merging is done by the owner bypassing that rule, on a commit that was read:
+  `gh pr merge <n> --squash --admin --match-head-commit <sha>`. Do not leave an
+  approval on a pull request instead; a branch can change after it. This
+  matters most for the release pull request, whose branch is written by a
+  workflow: read its diff at that commit before merging.
 
 - A direct push to `main` is a production deploy and a schema change. Go
   through a PR.
