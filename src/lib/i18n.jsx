@@ -67,6 +67,7 @@ const dict = {
     "sync.offline": "Sin conexión. Los cambios se sincronizan cuando vuelva.",
     "sync.outdated": "Hay una versión nueva de la app. Recargá para seguir sincronizando.",
     "sync.reload": "Recargar",
+    "update.available": "Hay una versión nueva de la app.",
     "sync.error": "No se pudo sincronizar. Se reintenta solo.",
     "sync.readOnly": "Solo lectura: los cambios que hagas acá se descartan.",
 
@@ -351,6 +352,7 @@ const dict = {
     "sync.offline": "Offline. Changes will sync when the connection is back.",
     "sync.outdated": "There is a new version of the app. Reload to keep syncing.",
     "sync.reload": "Reload",
+    "update.available": "There is a new version of the app.",
     "sync.error": "Could not sync. It will retry on its own.",
     "sync.readOnly": "Read-only: changes you make here are discarded.",
 
