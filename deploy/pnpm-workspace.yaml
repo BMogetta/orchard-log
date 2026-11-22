@@ -1,0 +1,12 @@
+# This directory is its own small project, with its own lockfile, so the deploy
+# job can install wrangler without the rest of the dev toolchain. The rules
+# are the same as in the repository root: nothing younger than a week (the
+# value is in minutes), no exclusions, and only these two packages may run an
+# install script.
+# This file is also what makes the directory a project of its own: without it
+# an install here would walk up and install the root project instead.
+minimumReleaseAge: 10080
+
+allowBuilds:
+  esbuild: true
+  workerd: true

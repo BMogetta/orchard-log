@@ -35,6 +35,15 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # The deploy job installs this small project instead of the root one.
+      # Install it here too, under the same rules, and bundle the API with
+      # it, so a lockfile or a wrangler that would fail the deploy fails the
+      # pull request instead.
+      - name: Check the deploy tool installs and bundles the API
+        run: |
+          pnpm install --frozen-lockfile --dir deploy
+          ./deploy/node_modules/.bin/wrangler pages functions build --outdir "$RUNNER_TEMP/functions"
+
       - name: Build (root base)
         run: pnpm build
 

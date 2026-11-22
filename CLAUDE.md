@@ -153,6 +153,16 @@ request creates the tag (`vX.Y.Z`) and the GitHub release. So:
   Migrations run unattended: no destructive statement without a recovery plan.
 - `wrangler.toml` variables travel with the deploy. Secrets (`EDITOR_EMAIL`)
   do not: change them with `wrangler pages secret put`, then redeploy.
+- The deploy job installs only `deploy/`, a small project of its own that
+  holds wrangler and nothing else (`pnpm install --frozen-lockfile --dir
+  deploy`), not the whole dev toolchain. Its wrangler range, pnpm version and
+  install rules must equal the root project's, and every package in its
+  lockfile must be in the root lockfile with the same version and integrity;
+  `test/deploy-package.test.js` checks that, and CI installs it and bundles
+  the API with it on every pull request. To change wrangler, change the
+  range in both `package.json` files, then run `pnpm install` and
+  `pnpm install --dir deploy`. A root update that moves a package the deploy
+  lockfile shares needs the second command too.
 - Keep credentials out of the first job of the deploy workflow (`bundle`). It
   runs third-party code. It is not called `build` on purpose: that is the name
   of the required check, which comes from `ci.yml`.
@@ -205,6 +215,7 @@ shared/sync.js                 sync contract shared by the app and the API
 functions/api/                 the API routes (Cloudflare Pages Functions)
 server/                        auth, document store and photo store for the API
 migrations/                    D1 schema
+deploy/                       what the deploy job installs: wrangler only (see Release)
 public/                        favicon.svg + PWA icons
 ```
 
