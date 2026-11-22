@@ -107,6 +107,19 @@ describe("a read-only device", () => {
     expect(document.querySelectorAll('input[type="file"]')).toHaveLength(0);
   });
 
+  it("is not asked to look after backups, unlike the editor", async () => {
+    await openSeededTree();
+    expect(screen.queryByText("Export now")).not.toBeInTheDocument();
+
+    // Nor is a device that does not yet know whether it is the editor.
+    act(() => sync.set({ state: "offline", role: null }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("Export now")).not.toBeInTheDocument();
+
+    act(() => sync.set({ state: "idle", role: "editor" }));
+    expect(await screen.findByText("Export now")).toBeInTheDocument();
+  });
+
   it("hides adding trees, and keeps export without import", async () => {
     await openSeededTree();
     fireEvent.click(screen.getByText("← All trees"));
