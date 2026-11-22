@@ -72,6 +72,34 @@ npm run preview   # serve the build
 Deploy target: static hosting (Cloudflare Pages / Netlify / GitHub Pages).
 Verified building on Node 22.
 
+## Release
+
+There is no versioning, tagging or release tool. **Merging to `main` is the
+release**: `.github/workflows/deploy-cloudflare.yml` lints, tests and builds
+with `VITE_SYNC=1` in one job, then, in a separate job that holds the
+Cloudflare token, applies pending D1 migrations to the remote database and
+deploys the app and its API to the Cloudflare Pages project (`orchard-log`).
+A manual run of that workflow deploys only when started from `main`.
+`deploy-pages.yml` publishes the local-only demo to GitHub Pages.
+
+- A direct push to `main` is a production deploy and a schema change. Go
+  through a PR.
+- A migration ships in the same PR as the code that needs it, and must leave
+  the code already in production working, because it is applied first. If the
+  deploy then fails, production keeps running the old code on the new schema.
+  Migrations run unattended: no destructive statement without a recovery plan.
+- `wrangler.toml` variables travel with the deploy. Secrets (`EDITOR_EMAIL`)
+  do not: change them with `wrangler pages secret put`, then redeploy.
+- Keep credentials out of the build job of the deploy workflow, and keep its
+  actions pinned to commit SHAs. That job runs third-party code.
+- Manual fallback, from a clean and up-to-date `main`, after `pnpm lint` and
+  `pnpm test`: `wrangler d1 migrations apply orchard --remote`,
+  `VITE_SYNC=1 pnpm build`,
+  `wrangler pages deploy dist --project-name orchard-log --branch main`.
+- Rollback: redeploy an earlier deployment from the Pages dashboard (re-running
+  an old workflow run also ships that old code). Neither rolls back the
+  database; D1 Time Travel is the recovery path for data.
+
 ## Project layout
 
 ```

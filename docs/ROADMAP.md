@@ -113,14 +113,15 @@ How it fits together:
 - [x] PWA under Access: manifest fetched with credentials; `/api` navigations
       bypass the cached app shell.
 - [x] D1 database created (`orchard`).
-- [ ] Cloudflare: apply the schema remotely, Pages project, custom domain,
-      Access application + policy, `EDITOR_EMAIL` secret, first deploy.
+- [x] Cloudflare: schema applied remotely, Pages project, custom domain,
+      Access application + policy, `EDITOR_EMAIL` secret, first deploy. Real
+      data migrated by importing a backup on the new origin.
 
 After the first deploy, in this order:
 
 - [ ] Read-only accounts still see the edit controls; hide them.
-- [ ] Deploy the real app from CI on merge to `main` (today it is a manual
-      `wrangler pages deploy`).
+- [x] Deploy the real app from CI on merge to `main`
+      (`deploy-cloudflare.yml`: lint, test, build, migrations, deploy).
 - [ ] Photo sync (D1 blobs or R2, undecided).
 
 How the app decides which side is newer: per document, it remembers the local
@@ -156,7 +157,7 @@ same plants, offline-first.
       browser needed): UI flow tests over the real App on the in-memory adapter
       (`test/flows.test.jsx`) + CouchDB sync tests via an in-process
       express-pouchdb server (`test/sync.test.js`).
-- [ ] Real app → Cloudflare Pages (with the Phase 3 API).
+- [x] Real app → Cloudflare Pages (with the Phase 3 API).
 - [ ] Playwright smoke test of critical flows against the *deployed* build
       (real browser / IndexedDB / service worker; complements the jsdom flows).
 
