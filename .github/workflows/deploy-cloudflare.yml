@@ -38,8 +38,10 @@ concurrency:
 
 jobs:
   # No credentials here. Install, lint, test and build all execute third-party
-  # code, so they are kept in a job that has nothing worth stealing.
-  build:
+  # code, so they are kept in a job that has nothing worth stealing. Not named
+  # "build": that is the name of the check main requires, which comes from
+  # ci.yml, and a second job reporting under the same name would blur it.
+  bundle:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -79,7 +81,7 @@ jobs:
   # and only the built static files cross over from the job above. The
   # dependency cache is not restored here on purpose.
   deploy:
-    needs: build
+    needs: bundle
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
