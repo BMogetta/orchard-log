@@ -16,6 +16,8 @@ export default function App() {
   const canEdit = useCanEdit();
   const [view, setView] = useState("list");
   const [selectedId, setSelectedId] = useState(null);
+  // Set only while the form is creating a tree from an existing one.
+  const [templateId, setTemplateId] = useState(null);
   const [menu, setMenu] = useState(null); // null | "backup"
 
   const toggleMenu = (m) => setMenu((cur) => (cur === m ? null : m));
@@ -25,23 +27,36 @@ export default function App() {
   // by itself later.
   useEffect(() => {
     if (canEdit) return;
-    setView((cur) => (cur === "form" ? (selectedId ? "detail" : "list") : cur));
-  }, [canEdit, selectedId]);
+    // A copy in progress goes back to the tree it was being copied from.
+    const backTo = selectedId ?? templateId;
+    if (backTo && !selectedId) setSelectedId(backTo);
+    setTemplateId(null);
+    setView((cur) => (cur === "form" ? (backTo ? "detail" : "list") : cur));
+  }, [canEdit, selectedId, templateId]);
 
   function openDetail(id) {
+    setTemplateId(null);
     setSelectedId(id);
     setView("detail");
   }
   function openNew() {
+    setTemplateId(null);
     setSelectedId(null);
     setView("form");
   }
   function openEdit(id) {
+    setTemplateId(null);
     setSelectedId(id);
+    setView("form");
+  }
+  function openDuplicate(id) {
+    setTemplateId(id);
+    setSelectedId(null);
     setView("form");
   }
   function goList() {
     setView("list");
+    setTemplateId(null);
     setSelectedId(null);
   }
 
@@ -87,13 +102,19 @@ export default function App() {
             id={selectedId}
             onBack={goList}
             onEdit={() => openEdit(selectedId)}
+            onDuplicate={() => openDuplicate(selectedId)}
           />
         )}
 
         {view === "form" && canEdit && (
           <TreeForm
             id={selectedId}
-            onBack={selectedId ? () => openDetail(selectedId) : goList}
+            templateId={templateId}
+            onBack={() => {
+              const backTo = selectedId ?? templateId;
+              if (backTo) openDetail(backTo);
+              else goList();
+            }}
             onSaved={openDetail}
           />
         )}

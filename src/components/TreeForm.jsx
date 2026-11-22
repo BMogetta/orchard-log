@@ -3,6 +3,7 @@ import {
   trees,
   useLive,
   blankTree,
+  duplicateTree,
   SUN_VALUES,
   WATER_VALUES,
   PRUNING_TIMING_VALUES,
@@ -41,14 +42,19 @@ function EnumSelect({ prefix, values, value, onChange }) {
   );
 }
 
-export default function TreeForm({ id, onBack, onSaved }) {
+// `id` edits that tree. Without an id the form creates a tree: blank, or, when
+// `templateId` is given, pre-filled from that tree's species data.
+export default function TreeForm({ id, templateId = null, onBack, onSaved }) {
   const { t } = useT();
   const [tree, setTree] = useState(null);
+  // True once the form really holds a copy of the template tree.
+  const [copied, setCopied] = useState(false);
   const others = useLive(() => trees.all(), []) || [];
 
   useEffect(() => {
-    if (id == null) return setTree(blankTree());
-    trees.get(id).then((tr) => {
+    const sourceId = id ?? templateId;
+    if (sourceId == null) return setTree(blankTree());
+    trees.get(sourceId).then((tr) => {
       if (!tr) return setTree(blankTree());
       // Adopt a legacy single chill-hours value into the range minimum, so it
       // shows in the form (and is cleaned up on save) instead of an empty field.
@@ -63,9 +69,10 @@ export default function TreeForm({ id, onBack, onSaved }) {
       ) {
         tr = { ...tr, chillHoursRequired: "yes" };
       }
-      setTree(tr);
+      setCopied(id == null);
+      setTree(id == null ? duplicateTree(tr) : tr);
     });
-  }, [id]);
+  }, [id, templateId]);
 
   if (!tree) return <p className="empty">{t("common.loading")}</p>;
 
@@ -126,6 +133,8 @@ export default function TreeForm({ id, onBack, onSaved }) {
           {t("treeForm.save")}
         </button>
       </div>
+
+      {copied && <p className="field-hint">{t("treeForm.duplicateHint")}</p>}
 
       <fieldset>
         <legend>{t("treeForm.fieldset.identity")}</legend>

@@ -7,6 +7,7 @@ export { trees, events, photos } from "./repository.js";
 export { getSyncStatus, subscribeSyncStatus } from "./sync.js";
 export {
   blankTree,
+  duplicateTree,
   estimatedAgeMonths,
   EVENT_TYPES,
   SUN_VALUES,

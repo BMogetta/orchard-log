@@ -28,6 +28,7 @@ const dict = {
     "common.save": "Guardar",
     "common.cancel": "Cancelar",
     "common.edit": "Editar",
+    "common.duplicate": "Duplicar",
     "common.delete": "Borrar",
     "common.remove": "Quitar",
     "common.close": "Cerrar",
@@ -146,6 +147,7 @@ const dict = {
     // --- Tree form ---
     "treeForm.cancel": "← Cancelar",
     "treeForm.save": "Guardar árbol",
+    "treeForm.duplicateHint": "Árbol nuevo a partir de otro: se copiaron los nombres, la ficha de referencia y las tareas de cuidado. Completá la etiqueta y lo propio de esta planta.",
     "treeForm.fieldset.identity": "Identidad",
     "treeForm.fieldset.provenance": "Procedencia",
     "treeForm.fieldset.physical": "Físico",
@@ -301,6 +303,7 @@ const dict = {
     "common.save": "Save",
     "common.cancel": "Cancel",
     "common.edit": "Edit",
+    "common.duplicate": "Duplicate",
     "common.delete": "Delete",
     "common.remove": "Remove",
     "common.close": "Close",
@@ -419,6 +422,7 @@ const dict = {
     // --- Tree form ---
     "treeForm.cancel": "← Cancel",
     "treeForm.save": "Save tree",
+    "treeForm.duplicateHint": "New tree from another one: names, reference data and care tasks were copied. Fill in the label and what is specific to this plant.",
     "treeForm.fieldset.identity": "Identity",
     "treeForm.fieldset.provenance": "Provenance",
     "treeForm.fieldset.physical": "Physical",

@@ -284,6 +284,114 @@ describe("picking a photo for an event", () => {
   });
 });
 
+describe("new tree from an existing one", () => {
+  async function seedLemon() {
+    const id = await trees.save({
+      ...blankTree(),
+      label: "07",
+      commonName: "Lemon",
+      scientificName: "Citrus × limon",
+      sunSpec: "full-sun",
+      observedSun: "part-shade",
+      quirks: "drops leaves when moved",
+      careSchedule: [{ task: "Water", intervalDays: 3, lastDone: "2026-11-01" }],
+    });
+    await events.add({ treeId: id, type: "note", date: "2026-01-10", notes: "repotted" });
+    return id;
+  }
+
+  it("opens a pre-filled form and saves a separate tree, leaving the original alone", async () => {
+    const sourceId = await seedLemon();
+    renderApp();
+    fireEvent.click((await screen.findAllByText("Lemon")).at(-1));
+    await screen.findByText("repotted");
+
+    fireEvent.click(screen.getByText("Duplicate"));
+    expect(await screen.findByText(/New tree from another one/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Common name")).toHaveValue("Lemon");
+    expect(screen.getByLabelText("Scientific name")).toHaveValue("Citrus × limon");
+    const label = screen.getByLabelText(/^Pot label/);
+    expect(label).toHaveValue("");
+
+    // Nothing exists yet: the copy is only saved on request.
+    expect(await trees.all()).toHaveLength(1);
+
+    fireEvent.change(label, { target: { value: "08" } });
+    fireEvent.click(screen.getByText("Save tree"));
+    await screen.findByText("Clinical history");
+
+    const all = await trees.all();
+    expect(all).toHaveLength(2);
+    const copy = all.find((tr) => tr.id !== sourceId);
+    expect(copy).toMatchObject({
+      label: "08",
+      commonName: "Lemon",
+      scientificName: "Citrus × limon",
+      sunSpec: "full-sun",
+      observedSun: "unknown",
+      quirks: "",
+    });
+    expect(copy.careSchedule).toMatchObject([{ task: "Water", intervalDays: 3, lastDone: null }]);
+    expect(await events.forTree(copy.id)).toEqual([]);
+    expect(screen.queryByText("repotted")).toBeNull(); // the new tree's own, empty history
+
+    const original = await trees.get(sourceId);
+    expect(original).toMatchObject({ label: "07", observedSun: "part-shade" });
+    expect(original.careSchedule[0].lastDone).toBe("2026-11-01");
+    expect(await events.forTree(sourceId)).toHaveLength(1);
+  });
+
+  it("goes back to the original tree on cancel, without creating anything", async () => {
+    await seedLemon();
+    renderApp();
+    fireEvent.click((await screen.findAllByText("Lemon")).at(-1));
+    await screen.findByText("repotted");
+
+    fireEvent.click(screen.getByText("Duplicate"));
+    await screen.findByText(/New tree from another one/);
+    fireEvent.click(screen.getByText("← Cancel"));
+
+    expect(await screen.findByText("repotted")).toBeInTheDocument();
+    expect(await trees.all()).toHaveLength(1);
+  });
+
+  it("does not carry a cancelled copy into a later new tree or an edit", async () => {
+    await seedLemon();
+    renderApp();
+    fireEvent.click((await screen.findAllByText("Lemon")).at(-1));
+    await screen.findByText("repotted");
+    fireEvent.click(screen.getByText("Duplicate"));
+    await screen.findByText(/New tree from another one/);
+    fireEvent.click(screen.getByText("← Cancel"));
+    await screen.findByText("repotted");
+
+    // Editing the original is a plain edit of that tree.
+    fireEvent.click(screen.getAllByText("Edit")[0]);
+    expect(await screen.findByLabelText(/^Pot label/)).toHaveValue("07");
+    expect(screen.queryByText(/New tree from another one/)).toBeNull();
+    fireEvent.click(screen.getByText("← Cancel"));
+    await screen.findByText("repotted");
+
+    // And a new tree from the list starts blank.
+    fireEvent.click(screen.getByText("← All trees"));
+    fireEvent.click(await screen.findByText("Add tree"));
+    expect(await screen.findByLabelText("Common name")).toHaveValue("");
+    expect(screen.queryByText(/New tree from another one/)).toBeNull();
+  });
+
+  it("opens a plain blank form when the tree to copy no longer exists", async () => {
+    const id = await seedLemon();
+    renderApp();
+    fireEvent.click((await screen.findAllByText("Lemon")).at(-1));
+    await screen.findByText("repotted");
+
+    await trees.remove(id); // deleted elsewhere while the detail was open
+    fireEvent.click(screen.getByText("Duplicate"));
+    expect(await screen.findByLabelText("Common name")).toHaveValue("");
+    expect(screen.queryByText(/New tree from another one/)).toBeNull();
+  });
+});
+
 describe("harvest tracking", () => {
   it("records harvest yield and shows per-year totals that sum", async () => {
     await trees.save({ ...blankTree(), commonName: "Vine" });

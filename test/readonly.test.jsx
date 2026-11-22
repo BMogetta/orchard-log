@@ -49,6 +49,7 @@ if (!globalThis.localStorage) {
 
 const WRITE_CONTROLS = [
   "Edit",
+  "Duplicate",
   "Delete",
   "Mark done today",
   "+ Photo",
@@ -138,6 +139,21 @@ describe("a read-only device", () => {
     act(() => sync.set({ state: "idle", role: "editor" }));
     expect(screen.queryByText("Save tree")).not.toBeInTheDocument();
     expect(controls("Edit").length).toBeGreaterThan(0);
+  });
+
+  it("drops a copy in progress and returns to the tree it was copied from", async () => {
+    sync.set({ state: "idle", role: "editor" });
+    await openSeededTree();
+    fireEvent.click(controls("Duplicate")[0]);
+    expect(await screen.findByText(/New tree from another one/)).toBeInTheDocument();
+
+    act(() => sync.set({ state: "idle", role: "reader" }));
+    expect(screen.queryByText("Save tree")).not.toBeInTheDocument();
+    expect(await screen.findByText("repotted")).toBeInTheDocument();
+    expect(await trees.all()).toHaveLength(1);
+
+    act(() => sync.set({ state: "idle", role: "editor" }));
+    expect(screen.queryByText("Save tree")).not.toBeInTheDocument();
   });
 
   it("abandons an event edit in progress, and does not bring it back", async () => {

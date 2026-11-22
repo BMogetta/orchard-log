@@ -119,6 +119,72 @@ export function blankTree() {
   };
 }
 
+// --- New tree from an existing one ---------------------------------------
+// What describes the species rather than one particular plant: its names and
+// the whole spec side. Everything else (the pot label, provenance, physical
+// state, the pollination partner, and above all the observed side) belongs to
+// the plant it was recorded for and starts blank on a copy.
+const SPECIES_FIELDS = [
+  "commonName",
+  "scientificName",
+  "variety",
+  "referenceNotes",
+  "sunSpec",
+  "waterSpec",
+  "minTempC",
+  "maxTempC",
+  "chillHoursRequired",
+  "chillHoursMinSpec",
+  "chillHoursMaxSpec",
+  "deciduous",
+  "matureHeightM",
+  "matureSpreadM",
+  "soilPhSpec",
+  "growthRate",
+  "windTolerance",
+  "fertilizerType",
+  "fertilizerNotes",
+  "pruningTiming",
+  "pruningNotes",
+  "pollination",
+  "fruitingSeason",
+];
+const DEFAULT_INTERVAL_DAYS = 7; // what the form gives a newly added task
+
+const isPositiveNumber = (v) => typeof v === "number" && Number.isFinite(v) && v > 0;
+
+// A new, unsaved tree pre-filled from `source`: same species data and the same
+// care routine (never yet done), nothing that is specific to the source plant.
+// Built on a blank tree from an explicit list, so identity, revision and any
+// field not listed here can never leak into the copy.
+export function duplicateTree(source) {
+  const copy = blankTree();
+  for (const key of SPECIES_FIELDS) {
+    if (source[key] !== undefined) copy[key] = source[key];
+  }
+  if (Array.isArray(source.otherNames)) copy.otherNames = [...source.otherNames];
+  if (Array.isArray(source.careSchedule)) {
+    // Rebuilt field by field into the shape the form creates, so a task the
+    // source stored incompletely does not become one that is always overdue.
+    copy.careSchedule = source.careSchedule
+      .filter((task) => task !== null && typeof task === "object" && !Array.isArray(task))
+      .map((task) => ({
+        task: typeof task.task === "string" ? task.task : "",
+        intervalDays: isPositiveNumber(task.intervalDays)
+          ? task.intervalDays
+          : DEFAULT_INTERVAL_DAYS,
+        intervalDaysSummer: isPositiveNumber(task.intervalDaysSummer)
+          ? task.intervalDaysSummer
+          : null,
+        intervalDaysWinter: isPositiveNumber(task.intervalDaysWinter)
+          ? task.intervalDaysWinter
+          : null,
+        lastDone: null,
+      }));
+  }
+  return copy;
+}
+
 // --- v1 -> v2 normalisation (also used on legacy backup/db import) --------
 
 function normalizeSunEnum(v) {

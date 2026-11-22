@@ -58,7 +58,7 @@ function FullImage({ blob }) {
   return <img className="lightbox-img" src={url} alt="" />;
 }
 
-export default function TreeDetail({ id, onBack, onEdit }) {
+export default function TreeDetail({ id, onBack, onEdit, onDuplicate }) {
   const { t } = useT();
   const canEdit = useCanEdit();
   const ageLabel = useAgeLabel();
@@ -278,6 +278,9 @@ export default function TreeDetail({ id, onBack, onEdit }) {
           <div className="row-gap">
             <button className="ghost" onClick={onEdit}>
               {t("common.edit")}
+            </button>
+            <button className="ghost" onClick={onDuplicate}>
+              {t("common.duplicate")}
             </button>
             <button className="link danger" onClick={remove}>
               {t("common.delete")}

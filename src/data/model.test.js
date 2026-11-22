@@ -1,6 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { estimatedAgeMonths, migrateTreeToV2 } from "./model.js";
+import {
+  blankTree,
+  duplicateTree,
+  estimatedAgeMonths,
+  migrateTreeToV2,
+} from "./model.js";
 
 // Pure domain-model behaviour, storage-independent.
 
@@ -10,7 +15,9 @@ afterEach(() => {
 
 describe("estimatedAgeMonths", () => {
   it("returns null when purchase date or claimed age is missing", () => {
-    expect(estimatedAgeMonths({ purchaseDate: "", claimedAgeMonthsAtPurchase: 12 })).toBeNull();
+    expect(
+      estimatedAgeMonths({ purchaseDate: "", claimedAgeMonthsAtPurchase: 12 })
+    ).toBeNull();
     expect(
       estimatedAgeMonths({ purchaseDate: "2021-01-01", claimedAgeMonthsAtPurchase: null })
     ).toBeNull();
@@ -65,5 +72,172 @@ describe("migrateTreeToV2 — enum normalisation", () => {
     expect(t.chillHoursMinSpec).toBe(600);
     expect(t.chillHoursMaxSpec).toBeNull();
     expect(t.chillHoursSpec).toBeUndefined();
+  });
+});
+
+describe("duplicateTree", () => {
+  const source = () => ({
+    ...blankTree(),
+    id: "tree:source",
+    _rev: "7-abc",
+    label: "07",
+    commonName: "Lemon",
+    otherNames: ["Limonero"],
+    scientificName: "Citrus × limon",
+    variety: "Eureka",
+    source: "Vivero Norte",
+    purchaseDate: "2024-03-01",
+    claimedAgeMonthsAtPurchase: 24,
+    price: 30,
+    potLiters: 40,
+    substrate: "peat mix",
+    grafted: true,
+    rootstock: "trifoliata",
+    referenceNotes: "Subtropical evergreen.",
+    sunSpec: "full-sun",
+    waterSpec: "moderate",
+    minTempC: -2,
+    maxTempC: 38,
+    chillHoursRequired: "no",
+    deciduous: "evergreen",
+    soilPhSpec: "slightly-acidic",
+    growthRate: "medium",
+    windTolerance: "low",
+    fertilizerType: "citrus-blend",
+    fertilizerNotes: "monthly in season",
+    pruningTiming: "after-fruit",
+    pruningNotes: "light",
+    pollination: "self",
+    pollinationPartnerId: "tree:other",
+    fruitingSeason: "winter",
+    observedSun: "part-shade",
+    observedSunNotes: "scorched in January",
+    observedWater: "high",
+    observedWaterNotes: "dries fast",
+    quirks: "drops leaves when moved",
+    positionOnTerrace: "North terrace", // retired field still stored on old trees
+    somethingUnknown: "from an old backup",
+    careSchedule: [
+      {
+        task: "Water",
+        intervalDays: 3,
+        intervalDaysSummer: 1,
+        intervalDaysWinter: 7,
+        lastDone: "2026-11-01",
+        extra: "x",
+      },
+    ],
+    createdAt: "2024-03-01T00:00:00.000Z",
+    updatedAt: "2026-11-01T00:00:00.000Z",
+  });
+
+  it("copies the names and the whole spec side", () => {
+    const copy = duplicateTree(source());
+    expect(copy).toMatchObject({
+      commonName: "Lemon",
+      otherNames: ["Limonero"],
+      scientificName: "Citrus × limon",
+      variety: "Eureka",
+      referenceNotes: "Subtropical evergreen.",
+      sunSpec: "full-sun",
+      waterSpec: "moderate",
+      minTempC: -2,
+      maxTempC: 38,
+      chillHoursRequired: "no",
+      deciduous: "evergreen",
+      soilPhSpec: "slightly-acidic",
+      growthRate: "medium",
+      windTolerance: "low",
+      fertilizerType: "citrus-blend",
+      fertilizerNotes: "monthly in season",
+      pruningTiming: "after-fruit",
+      pruningNotes: "light",
+      pollination: "self",
+      fruitingSeason: "winter",
+    });
+  });
+
+  it("leaves blank everything that belongs to the source plant", () => {
+    const copy = duplicateTree(source());
+    const blank = blankTree();
+    for (const key of [
+      "label",
+      "source",
+      "purchaseDate",
+      "claimedAgeMonthsAtPurchase",
+      "price",
+      "potLiters",
+      "substrate",
+      "grafted",
+      "rootstock",
+      "pollinationPartnerId",
+      "observedSun",
+      "observedSunNotes",
+      "observedWater",
+      "observedWaterNotes",
+      "quirks",
+    ]) {
+      expect(copy[key], key).toEqual(blank[key]);
+    }
+  });
+
+  it("is a new tree: no id, no revision, no retired or unknown fields, fresh dates", () => {
+    const copy = duplicateTree(source());
+    for (const key of ["id", "_id", "_rev", "positionOnTerrace", "somethingUnknown"]) {
+      expect(copy, key).not.toHaveProperty(key);
+    }
+    expect(copy.createdAt).not.toBe("2024-03-01T00:00:00.000Z");
+    expect(Object.keys(copy).sort()).toEqual(Object.keys(blankTree()).sort());
+  });
+
+  it("copies the care routine as never done, with only the known fields", () => {
+    const copy = duplicateTree(source());
+    expect(copy.careSchedule).toEqual([
+      {
+        task: "Water",
+        intervalDays: 3,
+        intervalDaysSummer: 1,
+        intervalDaysWinter: 7,
+        lastDone: null,
+      },
+    ]);
+  });
+
+  it("shares no arrays or task objects with the source", () => {
+    const original = source();
+    const copy = duplicateTree(original);
+    copy.otherNames.push("Citron");
+    copy.careSchedule[0].task = "Changed";
+    expect(original.otherNames).toEqual(["Limonero"]);
+    expect(original.careSchedule[0].task).toBe("Water");
+  });
+
+  it("turns an incomplete or malformed care routine into well-formed tasks", () => {
+    const copy = duplicateTree({
+      commonName: "Fig",
+      otherNames: "nope",
+      careSchedule: [
+        null,
+        "water",
+        ["x"],
+        { task: "Water" }, // no interval stored
+        { task: 5, intervalDays: "3", intervalDaysSummer: 0, intervalDaysWinter: -1 },
+        { task: "Feed", intervalDays: 30, intervalDaysSummer: 15 },
+      ],
+    });
+    expect(copy.commonName).toBe("Fig");
+    expect(copy.otherNames).toEqual([]);
+    const task = (name, days, summer = null) => ({
+      task: name,
+      intervalDays: days,
+      intervalDaysSummer: summer,
+      intervalDaysWinter: null,
+      lastDone: null,
+    });
+    expect(copy.careSchedule).toEqual([
+      task("Water", 7),
+      task("", 7),
+      task("Feed", 30, 15),
+    ]);
   });
 });

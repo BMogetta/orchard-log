@@ -162,6 +162,10 @@ same plants, offline-first.
 - [x] List: search / sort / filter (needs-partner) / group by species.
 - [x] `.ics` export per care task (recurring VEVENT + alarm; `lib/ics.js`).
 - [ ] Gentle periodic "export your data" nudge.
+- [x] New tree from an existing one ("Duplicate" on the detail): opens the
+      new-tree form pre-filled with the names, the spec side and the care
+      routine (never done). Label, provenance, physical state, pollination
+      partner, observed side, events and photos are not copied.
 - [x] Location and zones removed from the UI (2026-11-22). Pots get moved
       every couple of weeks as the sun shifts, so a fixed position went stale
       faster than it was useful; observed sun and its notes carry what
