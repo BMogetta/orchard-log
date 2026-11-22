@@ -21,6 +21,14 @@ if (!globalThis.localStorage) {
   };
 }
 
+// Where getItem/setItem really live. With a real Storage object they are on
+// the prototype, and assigning to the instance would create a stored key
+// instead of replacing the method, so a spy on the instance does nothing.
+const storageMethods =
+  typeof Storage !== "undefined" && localStorage instanceof Storage
+    ? Storage.prototype
+    : localStorage;
+
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.parse("2026-11-22T12:00:00.000Z");
 const LAST = "orchard-log:last-export";
@@ -125,14 +133,15 @@ describe("stored state", () => {
   });
 
   it("works when storage throws", () => {
-    vi.spyOn(localStorage, "getItem").mockImplementation(() => {
+    vi.spyOn(storageMethods, "getItem").mockImplementation(() => {
       throw new Error("blocked");
     });
-    vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+    vi.spyOn(storageMethods, "setItem").mockImplementation(() => {
       throw new Error("blocked");
     });
     expect(() => markExported(NOW)).not.toThrow();
     expect(() => snoozeReminder(NOW)).not.toThrow();
+    expect(storageMethods.setItem).toHaveBeenCalled(); // the failure really happened
     expect(getBackupState()).toEqual({ lastExport: null, snoozedUntil: null });
   });
 });
