@@ -10,3 +10,7 @@ dev-dist
 # Cloudflare local dev: state and local-only variables
 .wrangler
 .dev.vars
+
+# Browser test output
+test-results
+playwright-report

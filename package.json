@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "test": "TZ=UTC vitest run",
     "test:watch": "TZ=UTC vitest",
+    "e2e": "playwright test",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.65.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^4.3.1",

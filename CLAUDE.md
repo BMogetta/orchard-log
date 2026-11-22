@@ -83,7 +83,20 @@ npm install
 npm run dev       # dev server
 npm run build     # production build -> dist/ (must stay green)
 npm run preview   # serve the build
+pnpm test         # unit and integration tests (Vitest)
+pnpm e2e          # browser tests (Playwright), see below
 ```
+
+`pnpm e2e` builds the app as it ships, starts the API locally on a throwaway
+database and bucket (`.wrangler/e2e`), and drives it in a real browser. It
+needs the browser once: `pnpm exec playwright install chromium`. The tests
+live in `e2e/` and cover what unit tests cannot see: two devices syncing, a
+photo that actually renders on the second one, the phone-width layout, and an
+open page noticing a new build. Add a browser test when a bug was only visible
+in a real browser. A run leaves `dist/` holding a test build, so rebuild
+before serving or deploying by hand. CI and the deploy run Node 22; run `pnpm test` under it
+(`mise exec node@22 -- pnpm test`) before pushing, since the test environment
+differs between Node versions.
 
 Deploy target: Cloudflare Pages, which also runs the API and binds the database
 and photo bucket (see Release). A build without sync is plain static files.
