@@ -157,6 +157,9 @@ Notes:
 
 - Functional components + hooks. Keep components small and focused.
 - Derive, don't duplicate: computed values (age, attention) live in helpers.
+- Any control that writes data is rendered only when `useCanEdit()` (from
+  `src/data`) is true, so read-only accounts do not see it. This is a courtesy
+  to the user, never the access control: the API enforces who may write.
 - Styling via the CSS variables in `styles.css`; keep the a11y floor already in
   place (`:focus-visible`, `prefers-reduced-motion`, mobile breakpoint).
 - Keep the build green and the app installable (don't break the PWA manifest /

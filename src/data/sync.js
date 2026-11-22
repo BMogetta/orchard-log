@@ -307,6 +307,9 @@ export function createSync({
     if (status.state === "idle") setStatus({ state: "syncing" });
     try {
       const me = await api("/api/me");
+      if (me.role !== "editor" && me.role !== "reader") {
+        throw new SyncError("error", "unexpected role from /api/me");
+      }
       const canWrite = me.role === "editor";
       const state = await loadState();
       await recoverInterruptedWrite(state);
@@ -382,7 +385,32 @@ export function createSync({
 // state: "off" (sync not built in) | "syncing" | "idle" | "offline" |
 // "signed-out" | "error". role: null until known, then "editor" | "reader".
 
-let appStatus = { state: syncEnabled ? "syncing" : "off", role: null };
+// The role is remembered between launches so a read-only device starts
+// read-only, instead of showing edit controls until the first request answers
+// (or indefinitely, when it starts offline).
+const ROLE_KEY = "orchard-log:sync-role";
+
+function rememberedRole() {
+  try {
+    const role = globalThis.localStorage?.getItem(ROLE_KEY);
+    return role === "editor" || role === "reader" ? role : null;
+  } catch {
+    return null; // storage blocked
+  }
+}
+
+function rememberRole(role) {
+  try {
+    if (role) globalThis.localStorage?.setItem(ROLE_KEY, role);
+  } catch {
+    // storage blocked: the role is simply asked again next launch
+  }
+}
+
+let appStatus = {
+  state: syncEnabled ? "syncing" : "off",
+  role: syncEnabled ? rememberedRole() : null,
+};
 const listeners = new Set();
 
 export const getSyncStatus = () => appStatus;
@@ -397,7 +425,9 @@ export function startSyncIfConfigured() {
   if (!syncEnabled) return null;
   const sync = createSync({
     onStatus: (next) => {
-      appStatus = next;
+      // A failed cycle reports no role; keep the last known one.
+      appStatus = { ...next, role: next.role ?? appStatus.role };
+      rememberRole(next.role);
       for (const listener of listeners) listener();
     },
   });

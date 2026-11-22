@@ -1,9 +1,11 @@
 import React, { useRef, useState } from "react";
 import { exportBackup, importBackup } from "../lib/backup.js";
 import { useT } from "../lib/i18n.jsx";
+import { useCanEdit } from "../data";
 
 export default function BackupControls({ onDone }) {
   const { t } = useT();
+  const canEdit = useCanEdit();
   const fileRef = useRef();
   const [msg, setMsg] = useState("");
 
@@ -35,16 +37,21 @@ export default function BackupControls({ onDone }) {
         >
           {t("backup.export")}
         </button>
-        <button className="ghost" onClick={() => fileRef.current.click()}>
-          {t("backup.import")}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          onChange={onImport}
-          hidden
-        />
+        {/* Export stays available to everyone; import writes, so it does not. */}
+        {canEdit && (
+          <>
+            <button className="ghost" onClick={() => fileRef.current.click()}>
+              {t("backup.import")}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json"
+              onChange={onImport}
+              hidden
+            />
+          </>
+        )}
       </div>
       {msg && <p className="field-hint">{msg}</p>}
     </div>

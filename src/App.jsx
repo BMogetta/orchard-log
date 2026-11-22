@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import TreeList from "./components/TreeList.jsx";
 import TreeDetail from "./components/TreeDetail.jsx";
 import TreeForm from "./components/TreeForm.jsx";
@@ -9,15 +9,26 @@ import DemoBanner from "./components/DemoBanner.jsx";
 import SyncBanner from "./components/SyncBanner.jsx";
 import { isDemo } from "./lib/demo.js";
 import { useT } from "./lib/i18n.jsx";
+import { useCanEdit } from "./data";
 
 // Minimal view state, no router dependency. view: list | detail | form
 export default function App() {
   const { t, toggleLang } = useT();
+  const canEdit = useCanEdit();
   const [view, setView] = useState("list");
   const [selectedId, setSelectedId] = useState(null);
   const [menu, setMenu] = useState(null); // null | "zones" | "backup"
 
   const toggleMenu = (m) => setMenu((cur) => (cur === m ? null : m));
+
+  // A device that turns read-only leaves the screens that only exist to write:
+  // the form goes back to the detail or the list, and the zones sheet closes.
+  // Leaving them is explicit so they do not reopen by themselves later.
+  useEffect(() => {
+    if (canEdit) return;
+    setView((cur) => (cur === "form" ? (selectedId ? "detail" : "list") : cur));
+    setMenu((cur) => (cur === "zones" ? null : cur));
+  }, [canEdit, selectedId]);
 
   function openDetail(id) {
     setSelectedId(id);
@@ -50,9 +61,11 @@ export default function App() {
           >
             {t("nav.switchTo")}
           </button>
-          <button className="icon-btn" onClick={() => toggleMenu("zones")}>
-            {t("nav.zones")}
-          </button>
+          {canEdit && (
+            <button className="icon-btn" onClick={() => toggleMenu("zones")}>
+              {t("nav.zones")}
+            </button>
+          )}
           <button className="icon-btn" onClick={() => toggleMenu("backup")}>
             {t("nav.backup")}
           </button>
@@ -62,7 +75,7 @@ export default function App() {
       {isDemo && <DemoBanner />}
       <SyncBanner />
 
-      {menu === "zones" && (
+      {canEdit && menu === "zones" && (
         <div className="menu-sheet">
           <ZonesControls />
         </div>
@@ -90,7 +103,7 @@ export default function App() {
           />
         )}
 
-        {view === "form" && (
+        {view === "form" && canEdit && (
           <TreeForm
             id={selectedId}
             onBack={selectedId ? () => openDetail(selectedId) : goList}

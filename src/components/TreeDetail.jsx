@@ -1,5 +1,13 @@
-import React, { useRef, useState } from "react";
-import { trees, events, photos, estimatedAgeMonths, EVENT_TYPES, useLive } from "../data";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  trees,
+  events,
+  photos,
+  estimatedAgeMonths,
+  EVENT_TYPES,
+  useLive,
+  useCanEdit,
+} from "../data";
 import { downscaleImage } from "../lib/image.js";
 import { downloadCareTaskIcs } from "../lib/ics.js";
 import { harvestTotals } from "../lib/harvest.js";
@@ -48,6 +56,7 @@ function FullImage({ blob }) {
 
 export default function TreeDetail({ id, onBack, onEdit }) {
   const { t } = useT();
+  const canEdit = useCanEdit();
   const ageLabel = useAgeLabel();
   const enumLabel = useEnumLabel();
 
@@ -70,6 +79,15 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   const [editDraft, setEditDraft] = useState(null);
   const [lightbox, setLightbox] = useState(null);
   const pendingEventId = useRef(null);
+
+  // An edit in progress does not survive the device turning read-only, or it
+  // would reappear, stale, if the device could edit again later.
+  useEffect(() => {
+    if (canEdit) return;
+    setEditingId(null);
+    setEditDraft(null);
+  }, [canEdit]);
+
   const eventPhotoRef = useRef(null);
 
   if (!tree) return <p className="empty">{t("common.loading")}</p>;
@@ -230,14 +248,16 @@ export default function TreeDetail({ id, onBack, onEdit }) {
         <button className="link" onClick={onBack}>
           {t("treeDetail.back")}
         </button>
-        <div className="row-gap">
-          <button className="ghost" onClick={onEdit}>
-            {t("common.edit")}
-          </button>
-          <button className="link danger" onClick={remove}>
-            {t("common.delete")}
-          </button>
-        </div>
+        {canEdit && (
+          <div className="row-gap">
+            <button className="ghost" onClick={onEdit}>
+              {t("common.edit")}
+            </button>
+            <button className="link danger" onClick={remove}>
+              {t("common.delete")}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="detail-head">
@@ -358,9 +378,11 @@ export default function TreeDetail({ id, onBack, onEdit }) {
                 >
                   {t("treeDetail.addToCalendar")}
                 </button>
-                <button className="ghost sm" onClick={() => markTaskDone(i)}>
-                  {t("treeDetail.markDoneToday")}
-                </button>
+                {canEdit && (
+                  <button className="ghost sm" onClick={() => markTaskDone(i)}>
+                    {t("treeDetail.markDoneToday")}
+                  </button>
+                )}
               </span>
             </div>
           ))}
@@ -386,16 +408,18 @@ export default function TreeDetail({ id, onBack, onEdit }) {
       <div className="photos">
         <div className="section-head">
           <h3>{t("treeDetail.photos")}</h3>
-          <label className="ghost file-btn">
-            {t("treeDetail.addPhoto")}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={onPickPhoto}
-              hidden
-            />
-          </label>
+          {canEdit && (
+            <label className="ghost file-btn">
+              {t("treeDetail.addPhoto")}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={onPickPhoto}
+                hidden
+              />
+            </label>
+          )}
         </div>
         <div className="thumbs">
           {loosePhotos.map((p) => (
@@ -405,74 +429,80 @@ export default function TreeDetail({ id, onBack, onEdit }) {
       </div>
 
       {/* Shared hidden input for attaching a photo to a specific event. */}
-      <input
-        ref={eventPhotoRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={onPickEventPhoto}
-        hidden
-      />
+      {canEdit && (
+        <input
+          ref={eventPhotoRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onPickEventPhoto}
+          hidden
+        />
+      )}
 
       <div className="log">
         <h3>{t("treeDetail.clinicalHistory")}</h3>
-        <div className="quick-log">
-          <button className="ghost sm" onClick={() => quickLog("flowering")}>
-            <Icon name="flower" className="tone-bloom" /> {t("treeDetail.observedFlower")}
-          </button>
-          <button className="ghost sm" onClick={() => quickLog("fruit-set")}>
-            <Icon name="cherry" className="tone-fruit" /> {t("treeDetail.observedFruit")}
-          </button>
-          <button className="ghost sm" onClick={() => quickLog("harvest")}>
-            <Icon name="shopping-basket" className="tone-harvest" /> {t("treeDetail.observedHarvest")}
-          </button>
-        </div>
-        <div className="log-form">
-          <select
-            value={draft.type}
-            onChange={(e) => setDraft({ ...draft, type: e.target.value })}
-          >
-            {EVENT_TYPES.map((v) => (
-              <option key={v} value={v}>
-                {t(`eventType.${v}`)}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={draft.date}
-            onChange={(e) => setDraft({ ...draft, date: e.target.value })}
-          />
-          <input
-            placeholder={t("treeDetail.notesPlaceholder")}
-            value={draft.notes}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-          />
-          {draft.type === "harvest" && (
-            <>
+        {canEdit && (
+          <>
+            <div className="quick-log">
+              <button className="ghost sm" onClick={() => quickLog("flowering")}>
+                <Icon name="flower" className="tone-bloom" /> {t("treeDetail.observedFlower")}
+              </button>
+              <button className="ghost sm" onClick={() => quickLog("fruit-set")}>
+                <Icon name="cherry" className="tone-fruit" /> {t("treeDetail.observedFruit")}
+              </button>
+              <button className="ghost sm" onClick={() => quickLog("harvest")}>
+                <Icon name="shopping-basket" className="tone-harvest" /> {t("treeDetail.observedHarvest")}
+              </button>
+            </div>
+            <div className="log-form">
+              <select
+                value={draft.type}
+                onChange={(e) => setDraft({ ...draft, type: e.target.value })}
+              >
+                {EVENT_TYPES.map((v) => (
+                  <option key={v} value={v}>
+                    {t(`eventType.${v}`)}
+                  </option>
+                ))}
+              </select>
               <input
-                type="number"
-                min="0"
-                step="0.1"
-                placeholder={t("treeDetail.yieldAmount")}
-                value={draft.yieldAmount}
-                onChange={(e) => setDraft({ ...draft, yieldAmount: e.target.value })}
+                type="date"
+                value={draft.date}
+                onChange={(e) => setDraft({ ...draft, date: e.target.value })}
               />
               <input
-                placeholder={t("treeDetail.yieldUnit")}
-                value={draft.yieldUnit}
-                onChange={(e) => setDraft({ ...draft, yieldUnit: e.target.value })}
+                placeholder={t("treeDetail.notesPlaceholder")}
+                value={draft.notes}
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
               />
-            </>
-          )}
-          <button className="primary" onClick={logEvent}>
-            {t("treeDetail.log")}
-          </button>
-        </div>
+              {draft.type === "harvest" && (
+                <>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder={t("treeDetail.yieldAmount")}
+                    value={draft.yieldAmount}
+                    onChange={(e) => setDraft({ ...draft, yieldAmount: e.target.value })}
+                  />
+                  <input
+                    placeholder={t("treeDetail.yieldUnit")}
+                    value={draft.yieldUnit}
+                    onChange={(e) => setDraft({ ...draft, yieldUnit: e.target.value })}
+                  />
+                </>
+              )}
+              <button className="primary" onClick={logEvent}>
+                {t("treeDetail.log")}
+              </button>
+            </div>
+          </>
+        )}
 
         <ul className="timeline">
           {(eventList || []).map((e) =>
-            editingId === e.id ? (
+            canEdit && editingId === e.id ? (
               <li key={e.id} className="ev-editing">
                 <select
                   value={editDraft.type}
@@ -530,17 +560,19 @@ export default function TreeDetail({ id, onBack, onEdit }) {
                   <span className="ev-date">{e.date}</span>
                   <span className={`ev-type t-${e.type}`}>{t(`eventType.${e.type}`)}</span>
                   <span className="ev-notes">{e.notes}</span>
-                  <span className="ev-actions">
-                    <button className="link sm" onClick={() => startEdit(e)}>
-                      {t("common.edit")}
-                    </button>
-                    <button className="link sm" onClick={() => addPhotoToEvent(e.id)}>
-                      {t("treeDetail.addPhoto")}
-                    </button>
-                    <button className="link danger sm" onClick={() => deleteEvent(e)}>
-                      {t("common.delete")}
-                    </button>
-                  </span>
+                  {canEdit && (
+                    <span className="ev-actions">
+                      <button className="link sm" onClick={() => startEdit(e)}>
+                        {t("common.edit")}
+                      </button>
+                      <button className="link sm" onClick={() => addPhotoToEvent(e.id)}>
+                        {t("treeDetail.addPhoto")}
+                      </button>
+                      <button className="link danger sm" onClick={() => deleteEvent(e)}>
+                        {t("common.delete")}
+                      </button>
+                    </span>
+                  )}
                 </div>
                 {photosForEvent(e.id).length > 0 && (
                   <div className="ev-photos">
@@ -560,9 +592,11 @@ export default function TreeDetail({ id, onBack, onEdit }) {
           <div className="lightbox-inner" onClick={(e) => e.stopPropagation()}>
             <FullImage blob={lightbox.blob} />
             <div className="lightbox-actions">
-              <button className="link danger" onClick={deleteLightboxPhoto}>
-                {t("common.delete")}
-              </button>
+              {canEdit && (
+                <button className="link danger" onClick={deleteLightboxPhoto}>
+                  {t("common.delete")}
+                </button>
+              )}
               <button className="ghost" onClick={() => setLightbox(null)}>
                 {t("common.close")}
               </button>

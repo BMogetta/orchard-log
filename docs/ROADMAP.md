@@ -119,7 +119,9 @@ How it fits together:
 
 After the first deploy, in this order:
 
-- [ ] Read-only accounts still see the edit controls; hide them.
+- [x] Read-only accounts no longer see the controls that write (`useCanEdit`;
+      the last known role is remembered on the device so it also applies
+      offline and before the first request answers).
 - [x] Deploy the real app from CI on merge to `main`
       (`deploy-cloudflare.yml`: lint, test, build, migrations, deploy).
 - [ ] Photo sync (D1 blobs or R2, undecided).

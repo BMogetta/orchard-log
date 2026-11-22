@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { trees, zones, useLive, estimatedAgeMonths } from "../data";
+import { trees, zones, useLive, useCanEdit, estimatedAgeMonths } from "../data";
 import { computeAttention } from "../lib/attention.js";
 import { computePhenology } from "../lib/phenology.js";
 import { Icon, WaterIcon } from "./icons.jsx";
@@ -149,6 +149,7 @@ function TreeCard({ tree, onOpen, attn, pheno }) {
 
 export default function TreeList({ onOpen, onNew }) {
   const { t } = useT();
+  const canEdit = useCanEdit();
   const list = useLive(() => trees.all(), []);
   const zoneList = useLive(() => zones.list(), []) || [];
   const attnItems = useLive(() => computeAttention(), []) || [];
@@ -205,9 +206,11 @@ export default function TreeList({ onOpen, onNew }) {
     <section>
       <div className="section-head">
         <h2>{t("treeList.title")}</h2>
-        <button className="primary" onClick={onNew}>
-          {t("treeList.addTree")}
-        </button>
+        {canEdit && (
+          <button className="primary" onClick={onNew}>
+            {t("treeList.addTree")}
+          </button>
+        )}
       </div>
 
       {total > 0 && (
