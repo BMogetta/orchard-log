@@ -4,7 +4,16 @@ import reactHooks from "eslint-plugin-react-hooks";
 import react from "eslint-plugin-react";
 
 export default [
-  { ignores: ["dist", "dev-dist", "node_modules", ".wrangler"] },
+  {
+    ignores: [
+      "dist",
+      "dev-dist",
+      "node_modules",
+      ".wrangler",
+      "playwright-report",
+      "test-results",
+    ],
+  },
   js.configs.recommended,
   {
     files: ["**/*.{js,jsx}"],
@@ -39,6 +48,11 @@ export default [
   },
   {
     files: ["*.config.js"],
+    languageOptions: { globals: { ...globals.node } },
+  },
+  // Browser tests: Node for the test code, browser for what runs in the page.
+  {
+    files: ["e2e/**/*.js"],
     languageOptions: { globals: { ...globals.node } },
   },
 ];

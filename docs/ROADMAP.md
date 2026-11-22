@@ -193,8 +193,10 @@ same plants, offline-first.
       version and changelog; merging it tags the release. Versions label
       `main`, they do not gate the deploy. The app shows its version and build
       commit in the Backup menu. First release: 1.0.0.
-- [ ] Playwright smoke test of critical flows against the *deployed* build
-      (real browser / IndexedDB / service worker; complements the jsdom flows).
+- [x] Browser tests (Playwright, `e2e/`) of the critical flows, in CI on every
+      pull request: the production build with its service worker and the API,
+      run locally on a throwaway database and bucket. Not against the deployed
+      site, which is behind Access and holds real data.
 
 ## Phase 6 — Docs
 
