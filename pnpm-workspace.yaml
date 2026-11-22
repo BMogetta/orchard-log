@@ -1,3 +1,10 @@
+# Do not resolve to a version published less than a week ago (the value is in
+# minutes). Most malicious releases are caught and pulled within days, and an
+# install runs next to the deploy token. Dependabot has the same delay.
+# Do not add minimumReleaseAgeExclude: pnpm offers to when it meets a young
+# version, and an exclusion is how this rule would quietly stop applying.
+minimumReleaseAge: 10080
+
 allowBuilds:
   esbuild: true
   workerd: true

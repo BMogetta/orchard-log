@@ -156,6 +156,18 @@ request creates the tag (`vX.Y.Z`) and the GitHub release. So:
 - Keep credentials out of the first job of the deploy workflow (`bundle`). It
   runs third-party code. It is not called `build` on purpose: that is the name
   of the required check, which comes from `ci.yml`.
+- Dependencies resolve only to versions at least a week old
+  (`minimumReleaseAge` in `pnpm-workspace.yaml`; Dependabot waits the same).
+  An install runs next to the deploy token, and most malicious releases are
+  pulled within days. To change a dependency, edit the range in `package.json`
+  and run `pnpm install`; `pnpm update <name>` re-resolves far more than the
+  package named. wrangler releases several times a week, so its newest version
+  is usually not installable yet: that is intended.
+- Never add `minimumReleaseAgeExclude`. In a terminal pnpm offers to add an
+  exclusion and proceed when it meets a young version; answer no. A diff that
+  adds one is a red flag. The same rule is checked on every install in CI, so
+  a Dependabot pull request whose lockfile pulled in a young transitive
+  package fails there. That is the rule working: wait, do not exclude.
 - Every action in every workflow is pinned to a commit SHA, with the version
   in a trailing comment. Dependabot (`.github/dependabot.yml`) proposes the
   updates; never replace a SHA with a tag by hand.
