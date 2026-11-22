@@ -113,11 +113,12 @@ request creates the tag (`vX.Y.Z`) and the GitHub release. So:
   major.
 - The app shows its version and the commit it was built from in the Backup menu
   (`src/lib/version.js`). Use that to tell which build a device is running.
-- The release pull request is opened by a workflow, so its own CI run waits
-  for approval and reports nothing. `release.yml` starts CI on the release
-  branch instead, and that run counts as the required check. If the check is
-  missing, start it by hand:
-  `gh workflow run ci.yml --ref release-please--branches--main--components--orchard-log`.
+- The release pull request is opened with the workflow token, so its CI run
+  waits for the owner: open the pull request and press "Approve and run". On
+  the v1.1.0 release a green `workflow_dispatch` run of CI on the same commit
+  did not satisfy the required check; the merge was accepted only after the
+  pull request's own run was approved. Treat the approval as a step in the
+  procedure, not as a security control.
 - Read the release pull request's diff before merging it. Titles of merged
   pull requests go into the changelog as written, and a merged pull request's
   body can override how release-please reads its commits.
@@ -139,8 +140,9 @@ request creates the tag (`vX.Y.Z`) and the GitHub release. So:
   Migrations run unattended: no destructive statement without a recovery plan.
 - `wrangler.toml` variables travel with the deploy. Secrets (`EDITOR_EMAIL`)
   do not: change them with `wrangler pages secret put`, then redeploy.
-- Keep credentials out of the build job of the deploy workflow. That job runs
-  third-party code.
+- Keep credentials out of the first job of the deploy workflow (`bundle`). It
+  runs third-party code. It is not called `build` on purpose: that is the name
+  of the required check, which comes from `ci.yml`.
 - Every action in every workflow is pinned to a commit SHA, with the version
   in a trailing comment. Dependabot (`.github/dependabot.yml`) proposes the
   updates; never replace a SHA with a tag by hand.

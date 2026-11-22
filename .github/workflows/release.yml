@@ -10,18 +10,25 @@ name: Release
 # requests" (Settings → Actions → General), and a tag v1.0.0 on the commit the
 # first release counts from (see CLAUDE.md).
 #
-# Neither job has deploy credentials, but the first one runs third-party code
-# with write access to the repository, so its token is kept as small as the
-# tool allows and the permission to start workflows lives in a separate job
-# that runs no third-party code.
+# This workflow has no deploy credentials, but it runs third-party code with
+# write access to the repository, so its token is kept as small as the tool
+# allows. It has no permission to start workflows, and no workflow in this
+# repository listens for repository_dispatch, which a token with contents:
+# write could send. Keep it that way.
 #
-# Two things keep that write access away from production. The ruleset on main
-# requires an approval from a code owner (.github/CODEOWNERS), which a workflow
-# is not, so a workflow cannot approve and merge a pull request. (The setting
-# that lets workflows open pull requests also lets them approve, which is why a
-# plain approval would not be enough.) And the release branch itself is written
-# by this workflow, so the owner reads the release pull request's diff and
-# merges that exact commit.
+# What keeps that write access away from production:
+# - The ruleset on main requires an approval from a code owner
+#   (.github/CODEOWNERS), which a workflow is not, so a workflow cannot approve
+#   and merge a pull request. (The setting that lets workflows open pull
+#   requests also lets them approve, which is why a plain approval would not be
+#   enough.)
+# - The release branch is written by this workflow, so the owner reads the
+#   release pull request's diff and merges that exact commit.
+#
+# A pull request opened with the workflow token gets its CI run in a state
+# that waits for a maintainer ("Approve and run" on the pull request). That is
+# how the required check gets to run on a release pull request. It is a step
+# in the procedure, not a control to rely on.
 
 on:
   push:
@@ -43,31 +50,9 @@ jobs:
       contents: write # tag and publish the release, push the release branch
       pull-requests: write # open and update the release pull request
       issues: write # create the labels release-please tracks its state with
-    outputs:
-      prs_created: ${{ steps.release.outputs.prs_created }}
     steps:
       - id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-  # The CI run of a pull request opened with the workflow token waits for an
-  # approval and reports nothing, so the required check would block the merge.
-  # Starting CI on the release branch is allowed for that token, and that run
-  # is accepted as the required check on the same commit. The branch name is
-  # fixed rather than taken from the previous job's output. It is the one
-  # release-please derives from the target branch and the package name in
-  # release-please-config.json; if either changes, change it here too.
-  ci-on-release-pr:
-    needs: release-please
-    if: needs.release-please.outputs.prs_created == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Run CI on the release pull request
-        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$RELEASE_BRANCH"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_BRANCH: release-please--branches--main--components--orchard-log
