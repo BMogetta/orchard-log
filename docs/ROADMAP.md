@@ -183,6 +183,10 @@ same plants, offline-first.
       (`test/flows.test.jsx`) + CouchDB sync tests via an in-process
       express-pouchdb server (`test/sync.test.js`).
 - [x] Real app → Cloudflare Pages (with the Phase 3 API).
+- [x] Versions: release-please keeps a release pull request with the next
+      version and changelog; merging it tags the release. Versions label
+      `main`, they do not gate the deploy. The app shows its version and build
+      commit in the Backup menu. First release: 1.0.0.
 - [ ] Playwright smoke test of critical flows against the *deployed* build
       (real browser / IndexedDB / service worker; complements the jsdom flows).
 

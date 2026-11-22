@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
@@ -11,6 +12,11 @@ import { VitePWA } from "vite-plugin-pwa";
 // root and needs no override. The PWA scope/start_url follow this same value.
 const base = process.env.BASE_PATH ?? "/";
 
+// Shown in the app (src/lib/version.js). The version is whatever package.json
+// says; GITHUB_SHA is set by the CI and deploy workflows, not by local builds.
+const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
+const commit = (process.env.GITHUB_SHA ?? "").slice(0, 7);
+
 // The app shell is cached for offline use. All user data lives locally in
 // IndexedDB; the network is only used for optional sync with the app's own API
 // (functions/api, served by Cloudflare Pages on the same origin).
@@ -20,6 +26,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
     base,
+    define: {
+      __APP_VERSION__: JSON.stringify(version),
+      __APP_COMMIT__: JSON.stringify(commit),
+    },
     resolve: {
       alias: {
         // Production storage adapter: the browser's IndexedDB.

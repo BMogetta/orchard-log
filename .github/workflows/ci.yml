@@ -8,6 +8,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Started by release.yml on the release branch, whose pull request cannot
+  # trigger this workflow by itself.
+  workflow_dispatch:
 
 permissions:
   contents: read

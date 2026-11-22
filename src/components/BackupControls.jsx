@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { exportBackup, importBackup } from "../lib/backup.js";
 import { useT } from "../lib/i18n.jsx";
 import { useCanEdit } from "../data";
+import { BUILD_LABEL } from "../lib/version.js";
 
 export default function BackupControls({ onDone }) {
   const { t } = useT();
@@ -54,6 +55,7 @@ export default function BackupControls({ onDone }) {
         )}
       </div>
       {msg && <p className="field-hint">{msg}</p>}
+      <p className="field-hint">{t("app.version", { v: BUILD_LABEL })}</p>
     </div>
   );
 }

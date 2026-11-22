@@ -1,0 +1,65 @@
+name: Release
+
+# Versions are labels on main, not a gate: every merge still deploys (see
+# deploy-cloudflare.yml). On each push to main this keeps one "release" pull
+# request up to date, with the next version and a changelog worked out from the
+# Conventional Commit messages since the last release. Merging that pull
+# request tags the commit (vX.Y.Z) and publishes a GitHub release.
+#
+# Needs the repository setting "Allow GitHub Actions to create and approve pull
+# requests" (Settings → Actions → General), and a tag v1.0.0 on the commit the
+# first release counts from (see CLAUDE.md).
+#
+# Neither job has deploy credentials, but the first one runs third-party code
+# with write access to the repository, so its token is kept as small as the
+# tool allows and the permission to start workflows lives in a separate job
+# that runs no third-party code. What stops that write access from reaching
+# production is the ruleset on main: a pull request needs an approval that a
+# workflow cannot give.
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    # Only in the canonical repository: a copy or fork should not open release
+    # pull requests or cut tags of its own.
+    if: github.repository == 'BMogetta/orchard-log'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # tag and publish the release, push the release branch
+      pull-requests: write # open and update the release pull request
+      issues: write # create the labels release-please tracks its state with
+    outputs:
+      prs_created: ${{ steps.release.outputs.prs_created }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # A pull request opened with the workflow token does not trigger other
+  # workflows, so CI would never run on it and the required check would block
+  # the merge. Starting CI by hand on the release branch is allowed for that
+  # token and reports the same check on the same commit. The branch name is
+  # fixed (it is the one release-please always uses for main) rather than taken
+  # from the previous job's output.
+  ci-on-release-pr:
+    needs: release-please
+    if: needs.release-please.outputs.prs_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Run CI on the release pull request
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref release-please--branches--main
+        env:
+          GH_TOKEN: ${{ github.token }}

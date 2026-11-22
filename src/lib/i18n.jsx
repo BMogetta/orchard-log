@@ -40,6 +40,7 @@ const dict = {
     "common.days.short": "d",
 
     // --- Backup panel ---
+    "app.version": "Versión {v}",
     "backup.hint": "Tus datos viven sólo en este dispositivo. Exportá seguido y guardá el archivo en un lugar seguro — es toda tu historia.",
     "backup.export": "Exportar respaldo",
     "backup.import": "Importar respaldo",
@@ -315,6 +316,7 @@ const dict = {
     "common.days.short": "d",
 
     // --- Backup panel ---
+    "app.version": "Version {v}",
     "backup.hint": "Your data lives only on this device. Export regularly and keep the file somewhere safe — it's your whole history.",
     "backup.export": "Export backup",
     "backup.import": "Import backup",

@@ -86,13 +86,37 @@ Verified building on Node 22.
 
 ## Release
 
-There is no versioning, tagging or release tool. **Merging to `main` is the
-release**: `.github/workflows/deploy-cloudflare.yml` lints, tests and builds
-with `VITE_SYNC=1` in one job, then, in a separate job that holds the
-Cloudflare token, applies pending D1 migrations to the remote database and
-deploys the app and its API to the Cloudflare Pages project (`orchard-log`).
+**Merging to `main` deploys.** `.github/workflows/deploy-cloudflare.yml` lints,
+tests and builds with `VITE_SYNC=1` in one job, then, in a separate job that
+holds the Cloudflare token, applies pending D1 migrations to the remote database
+and deploys the app and its API to the Cloudflare Pages project (`orchard-log`).
 A manual run of that workflow deploys only when started from `main`.
 There is no public demo deployment.
+
+**Versions are labels, not a gate.** `.github/workflows/release.yml` runs
+release-please on every push to `main` and keeps one release pull request up to
+date: the next version in `package.json`, and `CHANGELOG.md`, both worked out
+from the Conventional Commit messages since the last release. Merging that pull
+request creates the tag (`vX.Y.Z`) and the GitHub release. So:
+
+- Never bump `package.json`'s version, edit `CHANGELOG.md` or
+  `.release-please-manifest.json`, or create a tag by hand. The one exception
+  was the starting point: the tag `v1.0.0`, placed by hand on the commit the
+  first release counts from, because release-please only looks at commits
+  after the tag that matches its manifest. Commit messages are
+  the input: `feat` is a minor bump, `fix` a patch, `!` or `BREAKING CHANGE` a
+  major.
+- The app shows its version and the commit it was built from in the Backup menu
+  (`src/lib/version.js`). Use that to tell which build a device is running.
+- The release pull request is opened by a workflow, which does not trigger CI by
+  itself; `release.yml` starts CI on that branch. If its check is missing,
+  close and reopen the pull request.
+- Read the release pull request's diff before merging it. Titles of merged
+  pull requests go into the changelog as written, and a merged pull request's
+  body can override how release-please reads its commits.
+- `release.yml` runs third-party code with write access to the repository. Do
+  not give that job `actions: write`, and do not loosen the approval rule on
+  `main`: together they are what keeps that access away from a deploy.
 
 - A direct push to `main` is a production deploy and a schema change. Go
   through a PR.

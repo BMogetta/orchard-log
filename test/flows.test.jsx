@@ -184,6 +184,15 @@ describe("event photos", () => {
   });
 });
 
+describe("build identification", () => {
+  it("shows the running build in the Backup menu", async () => {
+    renderApp();
+    fireEvent.click(await screen.findByText("Backup"));
+    // Tests run without the build-time values, so the fallback label shows.
+    expect(screen.getByText("Version dev")).toBeInTheDocument();
+  });
+});
+
 describe("picking a photo", () => {
   afterEach(() => {
     image.fail = false;
