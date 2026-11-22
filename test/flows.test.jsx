@@ -5,7 +5,7 @@ import React from "react";
 import App from "../src/App.jsx";
 import { I18nProvider } from "../src/lib/i18n.jsx";
 import { resetDatabase, pouch } from "../src/data/backend.js";
-import { trees } from "../src/data/repository.js";
+import { trees, events, photos } from "../src/data/repository.js";
 import { blankTree } from "../src/data/model.js";
 
 // jsdom's Blob/File lack arrayBuffer()/text(), which backup export/import and
@@ -19,8 +19,13 @@ globalThis.File = NodeFile;
 //
 // The camera path needs canvas/createImageBitmap, which jsdom lacks, so
 // downscaleImage is replaced by a pass-through that yields a tiny JPEG blob.
+const image = vi.hoisted(() => ({ fail: false, empty: false }));
 vi.mock("../src/lib/image.js", () => ({
-  downscaleImage: async () => new Blob(["img-bytes"], { type: "image/jpeg" }),
+  downscaleImage: async () => {
+    if (image.fail) throw new Error("cannot decode");
+    if (image.empty) return null; // what canvas.toBlob yields when it cannot encode
+    return new Blob(["img-bytes"], { type: "image/jpeg" });
+  },
   blobUrl: () => "blob:mock",
 }));
 
@@ -176,6 +181,106 @@ describe("event photos", () => {
     const lightbox = container.querySelector(".lightbox");
     fireEvent.click(within(lightbox).getByText("Delete"));
     await waitFor(() => expect(container.querySelector("img.thumb")).toBeNull());
+  });
+});
+
+describe("picking a photo", () => {
+  afterEach(() => {
+    image.fail = false;
+    image.empty = false;
+  });
+
+  it("lets the phone offer the gallery, not only the camera", async () => {
+    const id = await trees.save({ ...blankTree(), commonName: "Olive" });
+    await events.add({ treeId: id, type: "note", date: "2026-01-10", notes: "repotted" });
+    const { container } = renderApp();
+    fireEvent.click(await screen.findByText("Olive"));
+    await screen.findByText("repotted");
+
+    const inputs = [...container.querySelectorAll('input[type="file"]')];
+    expect(inputs).toHaveLength(2); // tree gallery + event photo
+    for (const input of inputs) {
+      expect(input).toHaveAttribute("accept", "image/*");
+      // `capture` would send a phone straight to the camera.
+      expect(input).not.toHaveAttribute("capture");
+    }
+  });
+
+  it("says so when the picked file cannot be used, and stores nothing", async () => {
+    const id = await trees.save({ ...blankTree(), commonName: "Olive" });
+    const { container } = renderApp();
+    fireEvent.click(await screen.findByText("Olive"));
+    await screen.findByText("Clinical history");
+
+    image.fail = true;
+    const input = container.querySelector('input[type="file"][accept="image/*"]');
+    fireEvent.change(input, {
+      target: { files: [new File(["x"], "clip.mp4", { type: "video/mp4" })] },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not be added");
+    expect(await photos.forTree(id)).toHaveLength(0);
+
+    // An image that decodes but cannot be encoded is refused the same way.
+    image.fail = false;
+    image.empty = true;
+    fireEvent.change(input, {
+      target: { files: [new File(["x"], "odd.png", { type: "image/png" })] },
+    });
+    await screen.findByRole("alert");
+    expect(await photos.forTree(id)).toHaveLength(0);
+    image.empty = false;
+
+    // So is a file far too large to decode safely, before any decoding.
+    const huge = new File(["x"], "huge.png", { type: "image/png" });
+    Object.defineProperty(huge, "size", { value: 30_000_001 });
+    fireEvent.change(input, { target: { files: [huge] } });
+    await screen.findByRole("alert");
+    expect(await photos.forTree(id)).toHaveLength(0);
+
+    // A later good pick works and clears the message.
+    image.fail = false;
+    fireEvent.change(input, {
+      target: { files: [new File(["x"], "p.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(() => expect(container.querySelector("img.thumb")).not.toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("picking a photo for an event", () => {
+  afterEach(() => {
+    image.fail = false;
+  });
+
+  it("reports a failure on that event, then attaches a good pick to it", async () => {
+    const id = await trees.save({ ...blankTree(), commonName: "Olive" });
+    const eventId = await events.add({
+      treeId: id,
+      type: "note",
+      date: "2026-01-10",
+      notes: "repotted",
+    });
+    const { container } = renderApp();
+    fireEvent.click(await screen.findByText("Olive"));
+    const row = (await screen.findByText("repotted")).closest("li");
+    const eventInput = container.querySelectorAll('input[type="file"]')[1];
+
+    image.fail = true;
+    fireEvent.click(within(row).getByText("+ Photo"));
+    fireEvent.change(eventInput, {
+      target: { files: [new File(["x"], "clip.mp4", { type: "video/mp4" })] },
+    });
+    expect(await within(row).findByRole("alert")).toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(1); // only next to that event
+
+    image.fail = false;
+    fireEvent.click(within(row).getByText("+ Photo"));
+    fireEvent.change(eventInput, {
+      target: { files: [new File(["x"], "p.jpg", { type: "image/jpeg" })] },
+    });
+    await waitFor(async () => expect(await photos.forTree(id)).toHaveLength(1));
+    expect((await photos.forTree(id))[0].eventId).toBe(eventId);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 

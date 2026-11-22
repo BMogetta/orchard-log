@@ -14,6 +14,10 @@ import { harvestTotals } from "../lib/harvest.js";
 import { Icon } from "./icons.jsx";
 import { useT } from "../lib/i18n.jsx";
 
+const TREE_PHOTOS = "tree";
+// Far above any real photo, and low enough to decode on a phone.
+const MAX_PICKED_BYTES = 30_000_000;
+
 const num = (v) => (v === "" || v == null ? null : Number(v));
 
 function useAgeLabel() {
@@ -78,6 +82,10 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+  // Where the last failed pick happened: TREE_PHOTOS, an event id, or null.
+  const [photoError, setPhotoError] = useState(null);
+  const canEditRef = useRef(canEdit);
+  canEditRef.current = canEdit;
   const pendingEventId = useRef(null);
 
   // An edit in progress does not survive the device turning read-only, or it
@@ -153,13 +161,34 @@ export default function TreeDetail({ id, onBack, onEdit }) {
     if (confirm(t("treeDetail.eventDeleteConfirm"))) await events.remove(ev.id);
   }
 
-  async function onPickPhoto(e) {
-    const file = e.target.files?.[0];
+  // The photo inputs carry no `capture` attribute on purpose: with it, a phone
+  // opens the camera directly and offers no way to pick an existing picture.
+  // A file from the gallery may be something the browser cannot decode (or not
+  // an image at all), so a failure is reported next to the control that was
+  // used instead of silently ignored. Whatever is picked is re-encoded by
+  // downscaleImage, so only a JPEG made here is stored, without the original
+  // file's metadata.
+  async function storePicked(input, eventId = null) {
+    const file = input.files?.[0];
     if (!file) return;
-    const blob = await downscaleImage(file);
-    await photos.add({ treeId: id, blob });
-    e.target.value = "";
+    setPhotoError(null);
+    try {
+      // Decoding happens at full size before the downscale; refuse files big
+      // enough to exhaust a phone's memory on the way.
+      if (file.size > MAX_PICKED_BYTES) throw new Error("file too large");
+      const blob = await downscaleImage(file);
+      if (!blob) throw new Error("image could not be encoded");
+      // The device may have turned read-only while the picker was open.
+      if (!canEditRef.current) return;
+      await photos.add({ treeId: id, eventId, blob });
+    } catch {
+      setPhotoError(eventId ?? TREE_PHOTOS);
+    } finally {
+      input.value = ""; // so picking the same file again fires a change
+    }
   }
+
+  const onPickPhoto = (e) => storePicked(e.target);
 
   // Attach a photo to a specific timeline event (vs. the tree-level gallery).
   function addPhotoToEvent(eventId) {
@@ -168,12 +197,9 @@ export default function TreeDetail({ id, onBack, onEdit }) {
   }
 
   async function onPickEventPhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const blob = await downscaleImage(file);
-    await photos.add({ treeId: id, eventId: pendingEventId.current, blob });
-    e.target.value = "";
+    const eventId = pendingEventId.current;
     pendingEventId.current = null;
+    await storePicked(e.target, eventId);
   }
 
   async function deleteLightboxPhoto() {
@@ -413,13 +439,17 @@ export default function TreeDetail({ id, onBack, onEdit }) {
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={onPickPhoto}
                 hidden
               />
             </label>
           )}
         </div>
+        {photoError === TREE_PHOTOS && (
+          <p className="field-hint" role="alert">
+            {t("treeDetail.photoFailed")}
+          </p>
+        )}
         <div className="thumbs">
           {loosePhotos.map((p) => (
             <Photo key={p.id} blob={p.blob} onClick={() => setLightbox(p)} />
@@ -433,7 +463,6 @@ export default function TreeDetail({ id, onBack, onEdit }) {
           ref={eventPhotoRef}
           type="file"
           accept="image/*"
-          capture="environment"
           onChange={onPickEventPhoto}
           hidden
         />
@@ -573,6 +602,11 @@ export default function TreeDetail({ id, onBack, onEdit }) {
                     </span>
                   )}
                 </div>
+                {photoError === e.id && (
+                  <p className="field-hint" role="alert">
+                    {t("treeDetail.photoFailed")}
+                  </p>
+                )}
                 {photosForEvent(e.id).length > 0 && (
                   <div className="ev-photos">
                     {photosForEvent(e.id).map((p) => (
